@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MLB DFS Playbook</title>
+<style>
+:root {
+  --bg0:#0D1117; --bg1:#161B22; --bg2:#21262D; --bg3:#2D333B;
+  --border:#30363D; --green:#00C853; --green-dim:#1B5E20; --green-glow:rgba(0,200,83,0.15);
+  --text:#E6EDF3; --muted:#8B949E; --accent:#00C853;
+  --heat5:#FF1744; --heat4:#FF6D00; --heat3:#FFD600; --heat2:#78909C; --heat1:#1E88E5; --heat0:#4527A0;
+  --red:#F85149; --yellow:#E3B341; --blue:#58A6FF;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg0);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;min-height:100vh}
+/* HEADER */
+.header{background:var(--bg1);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;gap:16px}
+.header h1{font-size:18px;font-weight:700;color:var(--green);letter-spacing:1px}
+.header .slate-info{margin-left:auto;display:flex;gap:16px;align-items:center}
+.badge{background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:4px 10px;font-size:12px;color:var(--muted)}
+.badge span{color:var(--green);font-weight:600}
+.refresh-btn{background:var(--green-dim);border:1px solid var(--green);color:var(--green);padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;transition:.2s}
+.refresh-btn:hover{background:var(--green);color:#000}
+/* TABS */
+.tabs{background:var(--bg1);border-bottom:1px solid var(--border);display:flex;padding:0 16px;gap:2px}
+.tab{padding:10px 16px;cursor:pointer;color:var(--muted);font-size:13px;font-weight:500;border-bottom:2px solid transparent;transition:.2s;white-space:nowrap}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--green);border-bottom-color:var(--green)}
+/* CONTENT */
+.tab-content{display:none;padding:20px}
+.tab-content.active{display:block}
+/* CARDS */
+.card{background:var(--bg1);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px}
+.card-title{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+/* GAME CARDS */
+.game-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-bottom:20px}
+.game-card{background:var(--bg1);border:1px solid var(--border);border-radius:8px;padding:14px}
+.game-card.top-game{border-color:var(--green);box-shadow:0 0 0 1px var(--green-glow)}
+.game-card.avoid-game{border-color:var(--red);opacity:.85}
+.gc-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.gc-matchup{font-size:15px;font-weight:700}
+.gc-ou{font-size:13px;color:var(--muted)}
+.gc-ou span{color:var(--green);font-weight:600}
+.gc-row{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:4px}
+.gc-row .val{color:var(--text)}
+.gc-weather{margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--muted)}
+.flag{display:inline-block;padding:2px 6px;border-radius:3px;font-size:10px;font-weight:700;margin-top:4px}
+.flag.green{background:rgba(0,200,83,.15);color:var(--green)}
+.flag.red{background:rgba(248,81,73,.15);color:var(--red)}
+.flag.yellow{background:rgba(227,179,65,.15);color:var(--yellow)}
+/* ANALYSIS */
+.analysis-section{background:var(--bg1);border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:16px}
+.analysis-title{font-size:14px;font-weight:700;color:var(--green);margin-bottom:10px}
+.analysis-text{line-height:1.7;color:var(--text);font-size:13px}
+/* TABLES */
+.table-wrap{overflow-x:auto;border-radius:6px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse}
+th{background:var(--bg2);color:var(--muted);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;padding:8px 10px;text-align:left;white-space:nowrap;position:sticky;top:0}
+td{padding:7px 10px;border-top:1px solid var(--border);font-size:13px;white-space:nowrap}
+tr:hover td{background:var(--bg2)}
+.pos-badge{display:inline-block;padding:2px 6px;border-radius:3px;font-size:10px;font-weight:700;min-width:28px;text-align:center}
+.pos-P{background:#1a3a5c;color:#58A6FF}
+.pos-C{background:#3a1a5c;color:#bc8cff}
+.pos-1B,.pos-2B,.pos-3B,.pos-SS{background:#1a3a1a;color:var(--green)}
+.pos-OF{background:#3a2a0a;color:var(--yellow)}
+.heat-dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:4px}
+/* HEATMAP */
+.h5{color:var(--heat5)!important;font-weight:700}
+.h4{color:var(--heat4)!important}
+.h3{color:var(--heat3)!important}
+.h2{color:var(--heat2)!important}
+.h1{color:var(--heat1)!important}
+.h0{color:var(--heat0)!important}
+/* LOCK/EXCL BUTTONS */
+.icon-btn{background:none;border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:2px 6px;cursor:pointer;font-size:11px;transition:.2s}
+.icon-btn.locked{background:rgba(0,200,83,.15);border-color:var(--green);color:var(--green)}
+.icon-btn.excluded{background:rgba(248,81,73,.15);border-color:var(--red);color:var(--red)}
+/* CONTROLS */
+.controls{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.filter-group{display:flex;gap:6px;align-items:center}
+.filter-group label{color:var(--muted);font-size:12px}
+select,input[type=number],input[type=text]{background:var(--bg2);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:6px;font-size:13px}
+select:focus,input:focus{outline:none;border-color:var(--green)}
+/* OPTIMIZER PANEL */
+.opt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin-bottom:20px}
+.opt-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px}
+.opt-label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:6px}
+.opt-card input,.opt-card select{width:100%}
+.run-btn{background:var(--green);color:#000;border:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;transition:.2s;display:block;width:100%}
+.run-btn:hover{background:#00E676}
+.run-btn:disabled{background:var(--bg3);color:var(--muted);cursor:not-allowed}
+/* TEAM CHIPS */
+.team-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.team-chip{background:var(--bg3);border:1px solid var(--border);color:var(--muted);padding:4px 10px;border-radius:4px;font-size:12px;cursor:pointer;transition:.2s}
+.team-chip.selected{background:var(--green-dim);border-color:var(--green);color:var(--green)}
+.team-chip.excluded-team{background:rgba(248,81,73,.1);border-color:var(--red);color:var(--red)}
+/* LINEUP TABLE */
+.lu-table td{font-size:12px}
+.lu-player{display:flex;flex-direction:column}
+.lu-player .p-name{font-weight:600}
+.lu-player .p-meta{font-size:10px;color:var(--muted)}
+.salary-bar{height:3px;background:var(--green);border-radius:2px;margin-top:2px}
+/* CONFIRMED LINEUPS */
+.conf-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.conf-card{background:var(--bg1);border:1px solid var(--border);border-radius:8px;padding:14px}
+.conf-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.conf-team{font-weight:700;font-size:14px}
+.conf-status{font-size:11px;padding:2px 8px;border-radius:3px}
+.conf-status.confirmed{background:rgba(0,200,83,.15);color:var(--green)}
+.conf-status.projected{background:rgba(227,179,65,.15);color:var(--yellow)}
+.batter-row{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px}
+.bat-order{color:var(--muted);width:14px}
+.bat-hand{font-size:10px;color:var(--muted);width:12px}
+/* UPLOAD */
+.upload-zone{border:2px dashed var(--border);border-radius:8px;padding:40px;text-align:center;cursor:pointer;transition:.2s;margin-bottom:16px}
+.upload-zone:hover,.upload-zone.dragover{border-color:var(--green);background:var(--green-glow)}
+.upload-zone .icon{font-size:36px;margin-bottom:8px}
+.upload-zone p{color:var(--muted);font-size:13px}
+.upload-zone p span{color:var(--green);font-weight:600}
+/* LOADING */
+.loading{text-align:center;padding:40px;color:var(--muted)}
+.spinner{display:inline-block;width:24px;height:24px;border:3px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* STATS ROW */
+.stats-row{display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap}
+.stat-box{background:var(--bg1);border:1px solid var(--border);border-radius:6px;padding:12px 16px;flex:1;min-width:100px}
+.stat-box .s-val{font-size:22px;font-weight:700;color:var(--green)}
+.stat-box .s-lbl{font-size:11px;color:var(--muted);text-transform:uppercase;margin-top:2px}
+/* EXPORT */
+.export-btn{background:var(--bg2);border:1px solid var(--border);color:var(--text);padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;transition:.2s}
+.export-btn:hover{border-color:var(--green);color:var(--green)}
+/* SCROLLABLE TABLE */
+.table-container{max-height:600px;overflow-y:auto;border-radius:6px;border:1px solid var(--border)}
+.table-container table{width:100%;border-collapse:collapse}
+/* EMPTY STATE */
+.empty{text-align:center;padding:60px 20px;color:var(--muted)}
+.empty .e-icon{font-size:40px;margin-bottom:10px}
+.empty p{font-size:13px}
+.empty .e-action{color:var(--green);cursor:pointer;font-weight:600}
+/* SECTION LABEL */
+.section-label{font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);letter-spacing:.5px;margin:20px 0 8px}
+/* TOP LISTS */
+.top-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;margin-bottom:20px}
+.top-item{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg2);border-radius:6px;border:1px solid var(--border)}
+.top-rank{font-size:18px;font-weight:700;color:var(--border);width:24px;text-align:center}
+.top-info{flex:1}
+.top-name{font-weight:600;font-size:13px}
+.top-meta{font-size:11px;color:var(--muted);margin-top:1px}
+.top-score{text-align:right}
+.top-score .val{font-size:16px;font-weight:700}
+.top-score .lbl{font-size:10px;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>⚾ MLB DFS Playbook</h1>
+  <div class="badge">MLB Lineup Optimizer</div>
+  <div class="badge" id="slateDate">Loading slate...</div>
+  <div class="slate-info">
+    <div class="badge">Players: <span id="playerCount">0</span></div>
+    <div class="badge">Lineups: <span id="lineupCount">0</span></div>
+    <div class="badge">Cap: <span>$50,000</span></div>
+    <button class="refresh-btn" onclick="refreshAllData()">↻ Refresh Data</button>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('overview')">📊 Slate Overview</div>
+  <div class="tab" onclick="showTab('pool')">👥 Player Pool</div>
+  <div class="tab" onclick="showTab('optimizer')">⚙️ Optimizer</div>
+  <div class="tab" onclick="showTab('lineups')">📋 Lineups</div>
+  <div class="tab" onclick="showTab('confirmed')">✅ Confirmed Lineups</div>
+  <div class="tab" onclick="showTab('settings')">🔧 Settings</div>
+</div>
+
+<!-- TAB 1: SLATE OVERVIEW -->
+<div id="tab-overview" class="tab-content active">
+  <div id="overview-loading" class="loading"><div class="spinner"></div><p>Fetching slate data...</p></div>
+  <div id="overview-content" style="display:none">
+    <div class="stats-row" id="overviewStats"></div>
+    <div class="section-label">Game Environment</div>
+    <div class="game-grid" id="gameCards"></div>
+    <div class="section-label">Slate Analysis</div>
+    <div id="analysisBlocks"></div>
+    <div class="section-label">Top Pitcher Plays</div>
+    <div class="top-grid" id="topPitchers"></div>
+    <div class="section-label">Top Batter Plays</div>
+    <div class="top-grid" id="topBatters"></div>
+    <div class="section-label">Top Values</div>
+    <div class="top-grid" id="topValues"></div>
+    <div class="section-label">Stack Targets</div>
+    <div class="top-grid" id="stackTargets"></div>
+  </div>
+</div>
+
+<!-- TAB 2: PLAYER POOL -->
+<div id="tab-pool" class="tab-content">
+  <div class="upload-zone" id="uploadZone" onclick="document.getElementById('csvInput').click()"
+       ondragover="event.preventDefault();this.classList.add('dragover')"
+       ondragleave="this.classList.remove('dragover')"
+       ondrop="handleDrop(event)">
+    <div class="icon">📂</div>
+    <p>Drop your DraftKings CSV here or <span>click to browse</span></p>
+    <p style="margin-top:6px;font-size:11px">Position, Name+ID, Name, ID, Roster Position, Salary, Game Info, TeamAbbrev, AvgPointsPerGame</p>
+  </div>
+  <input type="file" id="csvInput" accept=".csv" style="display:none" onchange="handleCSV(event)">
+
+  <div class="controls">
+    <div class="filter-group">
+      <label>Position</label>
+      <select id="posFilter" onchange="renderPool()">
+        <option value="">All</option>
+        <option value="P">P</option><option value="C">C</option>
+        <option value="1B">1B</option><option value="2B">2B</option>
+        <option value="3B">3B</option><option value="SS">SS</option><option value="OF">OF</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Team</label>
+      <select id="teamFilter" onchange="renderPool()"><option value="">All</option></select>
+    </div>
+    <div class="filter-group">
+      <label>Min Salary</label>
+      <input type="number" id="minSal" placeholder="3000" step="100" style="width:90px" onchange="renderPool()">
+    </div>
+    <div class="filter-group">
+      <label>Sort</label>
+      <select id="sortBy" onchange="renderPool()">
+        <option value="avgPoints">Projection</option>
+        <option value="salary">Salary</option>
+        <option value="valueScore">Value</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Show</label>
+      <select id="showFilter" onchange="renderPool()">
+        <option value="all">All Players</option>
+        <option value="locked">Locked Only</option>
+        <option value="excluded">Excluded Only</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="table-container">
+    <table id="poolTable">
+      <thead><tr>
+        <th>Heat</th><th>Lock</th><th>Excl</th><th>Pos</th><th>Name</th>
+        <th>Team</th><th>Opp</th><th>Order</th><th>Salary</th>
+        <th>Proj</th><th>Value</th><th>Implied</th><th>Park</th><th>Ump</th>
+      </tr></thead>
+      <tbody id="poolBody">
+        <tr><td colspan="14">
+          <div class="empty"><div class="e-icon">📂</div><p>Upload a DraftKings CSV to load the player pool</p></div>
+        </td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- TAB 3: OPTIMIZER -->
+<div id="tab-optimizer" class="tab-content">
+  <div class="opt-grid">
+    <div class="opt-card">
+      <div class="opt-label">Number of Lineups</div>
+      <input type="number" id="numLineups" value="20" min="1" max="150">
+    </div>
+    <div class="opt-card">
+      <div class="opt-label">Stack Team</div>
+      <select id="stackTeam"><option value="auto">Auto (Highest Implied)</option></select>
+    </div>
+    <div class="opt-card">
+      <div class="opt-label">Stack Size</div>
+      <select id="stackSize">
+        <option value="4" selected>4-Man Stack</option>
+        <option value="3">3-Man Stack</option>
+        <option value="5">5-Man Stack</option>
+      </select>
+    </div>
+    <div class="opt-card">
+      <div class="opt-label">Max Player Exposure %</div>
+      <input type="number" id="maxExposure" value="100" min="10" max="100" step="5">
+    </div>
+    <div class="opt-card">
+      <div class="opt-label">Noise / Variation</div>
+      <select id="noiseLevel">
+        <option value="0.5">Low (more similar)</option>
+        <option value="1.5" selected>Medium</option>
+        <option value="3.0">High (more varied)</option>
+      </select>
+    </div>
+    <div class="opt-card">
+      <div class="opt-label">Min Unique Players</div>
+      <input type="number" id="minUnique" value="4" min="1" max="9">
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Exclude Teams</div>
+    <div class="team-chips" id="excludeTeamChips"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Locked Players</div>
+    <div id="lockedPlayersList" style="color:var(--muted);font-size:13px">No players locked. Lock players from the Player Pool tab.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Excluded Players</div>
+    <div id="excludedPlayersList" style="color:var(--muted);font-size:13px">No players excluded.</div>
+  </div>
+
+  <button class="run-btn" id="runBtn" onclick="runOptimizer()" disabled>⚡ Generate Lineups</button>
+  <div id="optStatus" style="text-align:center;margin-top:12px;color:var(--muted);font-size:13px"></div>
+</div>
+
+<!-- TAB 4: LINEUPS -->
+<div id="tab-lineups" class="tab-content">
+  <div class="controls">
+    <button class="export-btn" onclick="exportLineups()">📥 Export to CSV</button>
+    <button class="export-btn" onclick="exportDKUpload()">📤 DK Upload Format</button>
+    <span style="color:var(--muted);font-size:12px" id="lineupStats"></span>
+  </div>
+  <div id="lineupsContent">
+    <div class="empty"><div class="e-icon">⚡</div>
+      <p>No lineups generated yet.<br><span class="e-action" onclick="showTab('optimizer')">Go to Optimizer →</span></p>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 5: CONFIRMED LINEUPS -->
+<div id="tab-confirmed" class="tab-content">
+  <div id="confirmed-loading" class="loading"><div class="spinner"></div><p>Fetching confirmed lineups...</p></div>
+  <div id="confirmed-content" style="display:none">
+    <div class="controls">
+      <button class="export-btn" onclick="refreshConfirmed()">↻ Refresh Lineups</button>
+      <span style="color:var(--muted);font-size:12px" id="confirmedStatus"></span>
+    </div>
+    <div class="conf-grid" id="confirmedGrid"></div>
+  </div>
+</div>
+
+<!-- TAB 6: SETTINGS -->
+<div id="tab-settings" class="tab-content">
+  <div class="card">
+    <div class="card-title">Data Sources</div>
+    <div style="display:flex;flex-direction:column;gap:12px;font-size:13px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><div style="font-weight:600">MLB Stats API</div><div style="color:var(--muted);font-size:11px">statsapi.mlb.com — Lineups, pitchers, umpires, BvP</div></div>
+        <div id="mlbApiStatus" class="flag green">Active</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><div style="font-weight:600">ESPN / DraftKings Odds</div><div style="color:var(--muted);font-size:11px">site.api.espn.com — Implied totals, weather</div></div>
+        <div id="espnApiStatus" class="flag green">Active</div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Ballpark Factors <span style="font-size:11px;color:var(--muted)">(2024-25 Avg)</span></div>
+    <div class="table-wrap">
+      <table><thead><tr><th>Team</th><th>Venue</th><th>Run Factor</th><th>HR Factor</th><th>Dome</th></tr></thead>
+      <tbody id="parkTable"></tbody></table>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Umpire Tendencies</div>
+    <div class="table-wrap">
+      <table><thead><tr><th>Umpire</th><th>Zone</th><th>Run Environment</th><th>DFS Tilt</th></tr></thead>
+      <tbody id="umpTable"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// DATA STORE
+// ═══════════════════════════════════════════════════════════════
+const S = {
+  players: [], games: [], lineups: [], confirmedLineups: {},
+  teamImplied: {}, parkData: {}, umpData: {},
+  settings: { numLineups:20, stackTeam:'auto', stackSize:4, maxExposure:100, noise:1.5, minUnique:4 },
+  excludedTeams: new Set()
+};
+
+// ═══════════════════════════════════════════════════════════════
+// PARK FACTORS
+// ═══════════════════════════════════════════════════════════════
+const PARKS = {
+  ARI:{run:103,hr:107,dome:true,venue:"Chase Field"},        ATL:{run:100,hr:102,dome:false,venue:"Truist Park"},
+  BAL:{run:105,hr:110,dome:false,venue:"Oriole Park"},       BOS:{run:103,hr:95,dome:false,venue:"Fenway Park"},
+  CHC:{run:102,hr:103,dome:false,venue:"Wrigley Field"},     CWS:{run:104,hr:112,dome:false,venue:"Guaranteed Rate Field"},
+  CIN:{run:108,hr:118,dome:false,venue:"Great American Ball Park"}, CLE:{run:97,hr:95,dome:false,venue:"Progressive Field"},
+  COL:{run:122,hr:120,dome:false,venue:"Coors Field"},       DET:{run:96,hr:90,dome:false,venue:"Comerica Park"},
+  HOU:{run:98,hr:97,dome:true,venue:"Daikin Park"},          KC:{run:96,hr:92,dome:false,venue:"Kauffman Stadium"},
+  LAA:{run:97,hr:98,dome:false,venue:"Angel Stadium"},       LAD:{run:98,hr:105,dome:false,venue:"Dodger Stadium"},
+  MIA:{run:95,hr:91,dome:true,venue:"loanDepot park"},       MIL:{run:101,hr:104,dome:true,venue:"American Family Field"},
+  MIN:{run:99,hr:97,dome:false,venue:"Target Field"},        NYM:{run:97,hr:94,dome:false,venue:"Citi Field"},
+  NYY:{run:105,hr:113,dome:false,venue:"Yankee Stadium"},    ATH:{run:98,hr:96,dome:false,venue:"Sutter Health Park"},
+  PHI:{run:106,hr:112,dome:false,venue:"Citizens Bank Park"},PIT:{run:97,hr:95,dome:false,venue:"PNC Park"},
+  SD:{run:93,hr:88,dome:false,venue:"Petco Park"},           SF:{run:94,hr:90,dome:false,venue:"Oracle Park"},
+  SEA:{run:95,hr:92,dome:true,venue:"T-Mobile Park"},        STL:{run:96,hr:91,dome:false,venue:"Busch Stadium"},
+  TB:{run:97,hr:96,dome:true,venue:"Tropicana Field"},       TEX:{run:102,hr:106,dome:true,venue:"Globe Life Field"},
+  TOR:{run:101,hr:103,dome:true,venue:"Rogers Centre"},      WSH:{run:99,hr:98,dome:false,venue:"Nationals Park"}
+};
+
+const UMPS = {
+  "Chad Fairchild":  {tilt:0,env:"neutral",zone:"avg"},
+  "Marvin Hudson":   {tilt:2,env:"hitter",zone:"tight"},
+  "Dan Bellino":     {tilt:-2,env:"pitcher",zone:"wide"},
+  "Pat Hoberg":      {tilt:-2,env:"pitcher",zone:"wide"},
+  "Chris Guccione":  {tilt:-1,env:"pitcher",zone:"wide"},
+  "Todd Tichenor":   {tilt:-1,env:"pitcher",zone:"wide"},
+  "John Tumpane":    {tilt:0,env:"neutral",zone:"avg"},
+  "Hunter Wendelstedt":{tilt:-2,env:"pitcher",zone:"wide"},
+  "Laz Diaz":        {tilt:2,env:"hitter",zone:"tight"},
+  "CB Bucknor":      {tilt:2,env:"hitter",zone:"tight"},
+  "Angel Hernandez": {tilt:2,env:"hitter",zone:"inconsistent"},
+  "Tripp Gibson":    {tilt:2,env:"hitter",zone:"tight"},
+  "Ron Kulpa":       {tilt:1,env:"neutral",zone:"inconsistent"},
+  "Jordan Baker":    {tilt:1,env:"hitter",zone:"tight"},
+  "Tim Timmons":     {tilt:1,env:"hitter",zone:"tight"},
+  "Doug Eddings":    {tilt:-1,env:"pitcher",zone:"wide"},
+  "James Hoye":      {tilt:0,env:"neutral",zone:"avg"},
+  "Ted Barrett":     {tilt:0,env:"neutral",zone:"avg"},
+  "Sam Holbrook":    {tilt:0,env:"neutral",zone:"avg"},
+  "Mike Estabrook":  {tilt:0,env:"neutral",zone:"avg"},
+};
+
+// ═══════════════════════════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════════════════════════
+function showTab(id) {
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    const ids=['overview','pool','optimizer','lineups','confirmed','settings'];
+    t.classList.toggle('active', ids[i]===id);
+  });
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  if(id==='confirmed' && Object.keys(S.confirmedLineups).length===0) fetchConfirmedLineups();
+  if(id==='settings') renderSettingsTables();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CSV PARSER
+// ═══════════════════════════════════════════════════════════════
+function handleCSV(e) { parseCSVFile(e.target.files[0]); }
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('uploadZone').classList.remove('dragover');
+  parseCSVFile(e.dataTransfer.files[0]);
+}
+function parseCSVFile(file) {
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const text = e.target.result;
+    const lines = text.trim().split('\n');
+    const headers = lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,''));
+    const idx = {
+      pos: headers.indexOf('Position'), name: headers.indexOf('Name'),
+      id: headers.indexOf('ID'), rp: headers.indexOf('Roster Position'),
+      sal: headers.indexOf('Salary'), game: headers.indexOf('Game Info'),
+      team: headers.indexOf('TeamAbbrev'), avg: headers.indexOf('AvgPointsPerGame')
+    };
+    S.players = [];
+    for(let i=1;i<lines.length;i++){
+      if(!lines[i].trim()) continue;
+      const cols = lines[i].split(',').map(c=>c.trim().replace(/^"|"$/g,''));
+      const gi = cols[idx.game]||'';
+      const m = gi.match(/(\w+)@(\w+)/);
+      const away = m?m[1]:'', home = m?m[2]:'';
+      const team = cols[idx.team]||'';
+      const sal = parseInt(cols[idx.sal])||0;
+      const avg = parseFloat(cols[idx.avg])||0;
+      S.players.push({
+        id: cols[idx.id], name: cols[idx.name], pos: cols[idx.pos],
+        rosterPosition: cols[idx.rp], salary: sal, team,
+        avgPoints: avg, isPitcher: cols[idx.rp]==='P',
+        opponent: team===away?home:away, isHome: team===home,
+        gameKey: away&&home?`${away}@${home}`:'',
+        valueScore: sal>0?+(avg/(sal/1000)).toFixed(3):0,
+        locked: false, excluded: false,
+        impliedRuns: S.teamImplied[team]||4.5,
+        parkFactor: PARKS[home]||{run:100,hr:100},
+        heatTier: 2
+      });
+    }
+    calcHeatTiers();
+    updateUI();
+    document.getElementById('uploadZone').style.display='none';
+    const today = new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+    document.getElementById('slateDate').innerHTML = today;
+  };
+  reader.readAsText(file);
+}
+
+function calcHeatTiers() {
+  const byPos = {};
+  S.players.forEach(p=>{
+    const k = p.isPitcher?'P':p.rosterPosition;
+    if(!byPos[k]) byPos[k]=[];
+    byPos[k].push(p.valueScore);
+  });
+  S.players.forEach(p=>{
+    const k = p.isPitcher?'P':p.rosterPosition;
+    const vals = byPos[k]||[];
+    const mean = vals.reduce((a,b)=>a+b,0)/vals.length;
+    const std = Math.sqrt(vals.reduce((a,b)=>a+(b-mean)**2,0)/vals.length)||1;
+    const z = (p.valueScore-mean)/std;
+    if(z>=1.5)      p.heatTier=5;
+    else if(z>=0.75) p.heatTier=4;
+    else if(z>=0.25) p.heatTier=3;
+    else if(z>=-0.25)p.heatTier=2;
+    else if(z>=-0.75)p.heatTier=1;
+    else             p.heatTier=0;
+  });
+}
+
+function updateUI(){
+  document.getElementById('playerCount').textContent=S.players.length;
+  renderPool();
+  renderOptimizerControls();
+  if(S.players.length>0){
+    generateOverview();
+    document.getElementById('runBtn').disabled=false;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FETCH: ESPN ODDS + WEATHER
+// ═══════════════════════════════════════════════════════════════
+async function fetchOddsWeather(){
+  try {
+    const r = await fetch('https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard');
+    if(!r.ok) throw new Error('ESPN API error');
+    const data = await r.json();
+    S.games = [];
+    data.events.forEach(ev=>{
+      const comp = ev.competitions[0];
+      const teams = comp.competitors;
+      const away = teams.find(t=>t.homeAway==='away');
+      const home = teams.find(t=>t.homeAway==='home');
+      const odds = comp.odds?.[0]||{};
+      const weather = ev.weather||{};
+      const ou = odds.overUnder||null;
+      let awayImpl=null, homeImpl=null;
+      if(ou){
+        const awayML = parseML(odds.awayTeamOdds?.moneyline?.close?.odds||odds.details);
+        const homeML = parseML(odds.homeTeamOdds?.moneyline?.close?.odds||'');
+        const aProb = awayML?mlToProb(awayML):0.5;
+        const hProb = homeML?mlToProb(homeML):0.5;
+        const tot = aProb+hProb||1;
+        awayImpl = +((ou*aProb/tot)*0.95).toFixed(2);
+        homeImpl = +((ou*hProb/tot)*0.95).toFixed(2);
+      }
+      const awayAbbr = away?.team?.abbreviation;
+      const homeAbbr = home?.team?.abbreviation;
+      const gameKey = `${awayAbbr}@${homeAbbr}`;
+      if(awayImpl){ S.teamImplied[awayAbbr]=awayImpl; S.teamImplied[homeAbbr]=homeImpl; }
+      S.games.push({
+        gameKey, away:awayAbbr, home:homeAbbr, ou,
+        awayImpl, homeImpl,
+        weather:{ temp:weather.temperature, cond:weather.displayValue,
+                  wind:weather.wind?.speed||0, windDir:weather.wind?.kph?'':''},
+        venue:comp.venue?.fullName||'',
+        ump:'', isDome: PARKS[homeAbbr]?.dome||false
+      });
+    });
+    S.players.forEach(p=>{ p.impliedRuns=S.teamImplied[p.team]||4.5; });
+  } catch(e){ console.warn('ESPN API:', e.message); }
+}
+
+function parseML(str){ if(!str)return null; const n=parseFloat(String(str).replace(/[^\d\-\+]/g,'')); return isNaN(n)?null:n; }
+function mlToProb(ml){ return ml<0?Math.abs(ml)/(Math.abs(ml)+100):100/(ml+100); }
+
+// ═══════════════════════════════════════════════════════════════
+// FETCH: MLB STATS API
+// ═══════════════════════════════════════════════════════════════
+async function fetchMLBData(){
+  try {
+    const today = new Date();
+    const dateStr = `${String(today.getMonth()+1).padStart(2,'0')}/${String(today.getDate()).padStart(2,'0')}/${today.getFullYear()}`;
+    const url = `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${dateStr}&hydrate=probablePitcher,officials,lineups,team`;
+    const r = await fetch(url);
+    const data = await r.json();
+    const games = data.dates?.[0]?.games||[];
+    games.forEach(g=>{
+      const awayAbbr = g.teams.away.team.abbreviation;
+      const homeAbbr = g.teams.home.team.abbreviation;
+      const key = `${awayAbbr}@${homeAbbr}`;
+      const ump = g.officials?.find(o=>o.officialType==='Home Plate')?.official?.fullName||'';
+      const awayLineup = g.lineups?.awayPlayers||[];
+      const homeLineup = g.lineups?.homePlayers||[];
+      const awayPitcher = g.teams.away.probablePitcher?.fullName||'TBD';
+      const homePitcher = g.teams.home.probablePitcher?.fullName||'TBD';
+      S.confirmedLineups[key] = { ump, awayPitcher, homePitcher, awayLineup, homeLineup,
+        awayConfirmed: awayLineup.length>0, homeConfirmed: homeLineup.length>0 };
+      const gInS = S.games.find(x=>x.gameKey===key);
+      if(gInS) gInS.ump = ump;
+      S.players.forEach(p=>{
+        if(p.team===awayAbbr){
+          const bi = awayLineup.findIndex(b=>b.fullName===p.name);
+          if(bi>=0) p.batOrder=bi+1;
+        }
+        if(p.team===homeAbbr){
+          const bi = homeLineup.findIndex(b=>b.fullName===p.name);
+          if(bi>=0) p.batOrder=bi+1;
+        }
+      });
+    });
+    renderPool();
+  } catch(e){ console.warn('MLB API:', e.message); }
+}
+
+async function fetchConfirmedLineups(){
+  document.getElementById('confirmed-loading').style.display='block';
+  document.getElementById('confirmed-content').style.display='none';
+  await fetchMLBData();
+  renderConfirmed();
+  document.getElementById('confirmed-loading').style.display='none';
+  document.getElementById('confirmed-content').style.display='block';
+}
+async function refreshConfirmed(){ await fetchConfirmedLineups(); }
+
+async function refreshAllData(){
+  document.getElementById('overview-loading').style.display='block';
+  document.getElementById('overview-content').style.display='none';
+  await Promise.all([fetchOddsWeather(), fetchMLBData()]);
+  generateOverview();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PLAYER POOL RENDER
+// ═══════════════════════════════════════════════════════════════
+const HEAT_COLORS=['#4527A0','#1E88E5','#78909C','#FFD600','#FF6D00','#FF1744'];
+const HEAT_LABELS=['Ice','Cold','Avg','Warm','Hot','🔥'];
+
+function renderPool(){
+  const posF = document.getElementById('posFilter')?.value||'';
+  const teamF = document.getElementById('teamFilter')?.value||'';
+  const minS = parseInt(document.getElementById('minSal')?.value)||0;
+  const sortK = document.getElementById('sortBy')?.value||'avgPoints';
+  const showF = document.getElementById('showFilter')?.value||'all';
+
+  let players = [...S.players];
+  if(posF) players=players.filter(p=>(p.isPitcher?'P':p.rosterPosition)===posF);
+  if(teamF) players=players.filter(p=>p.team===teamF);
+  if(minS) players=players.filter(p=>p.salary>=minS);
+  if(showF==='locked') players=players.filter(p=>p.locked);
+  if(showF==='excluded') players=players.filter(p=>p.excluded);
+  players.sort((a,b)=>b[sortK]-a[sortK]);
+
+  const tbody = document.getElementById('poolBody');
+  if(!S.players.length){ tbody.innerHTML='<tr><td colspan="14"><div class="empty"><div class="e-icon">📂</div><p>Upload a DraftKings CSV to load the player pool</p></div></td></tr>'; return; }
+
+  // Populate team filter
+  const teamSel = document.getElementById('teamFilter');
+  if(teamSel && teamSel.options.length<=1){
+    const teams=[...new Set(S.players.map(p=>p.team))].sort();
+    teams.forEach(t=>{ const o=document.createElement('option'); o.value=t; o.textContent=t; teamSel.appendChild(o); });
+  }
+
+  tbody.innerHTML = players.map(p=>{
+    const pos = p.isPitcher?'P':p.rosterPosition;
+    const hc = HEAT_COLORS[p.heatTier||2];
+    const implied = S.teamImplied[p.team]||'—';
+    const park = PARKS[p.gameKey?.split('@')[1]]||PARKS[p.team]||{};
+    const umpKey = S.games.find(g=>g.gameKey===p.gameKey)?.ump||'';
+    const umpTilt = UMPS[umpKey]?.tilt??0;
+    const umpStr = umpKey?`${umpKey.split(' ').pop()} (${umpTilt>=0?'+':''}${umpTilt})`:'—';
+    const batOrder = p.batOrder||'—';
+    return `<tr>
+      <td><span class="heat-dot" style="background:${hc}" title="${HEAT_LABELS[p.heatTier||2]}"></span></td>
+      <td><button class="icon-btn ${p.locked?'locked':''}" onclick="toggleLock('${p.id}')">${p.locked?'🔒':'🔓'}</button></td>
+      <td><button class="icon-btn ${p.excluded?'excluded':''}" onclick="toggleExclude('${p.id}')">${p.excluded?'✖':'○'}</button></td>
+      <td><span class="pos-badge pos-${pos}">${pos}</span></td>
+      <td style="font-weight:${p.locked?700:400}">${p.name}</td>
+      <td>${p.team}</td>
+      <td style="color:var(--muted)">${p.opponent||'—'}</td>
+      <td style="color:var(--muted)">${batOrder}</td>
+      <td>$${p.salary.toLocaleString()}</td>
+      <td style="color:var(--green);font-weight:600">${p.avgPoints.toFixed(1)}</td>
+      <td class="${valueClass(p.valueScore)}">${p.valueScore.toFixed(2)}</td>
+      <td>${typeof implied==='number'?implied.toFixed(1):'—'}</td>
+      <td style="color:${parkColor(park.run)}">${park.run||'—'}</td>
+      <td style="color:${tiltColor(umpTilt)}">${umpStr}</td>
+    </tr>`;
+  }).join('');
+}
+
+function valueClass(v){ if(v>=2.5)return 'h5'; if(v>=2.2)return 'h4'; if(v>=1.9)return 'h3'; if(v>=1.6)return 'h2'; return 'h1'; }
+function parkColor(r){ if(!r)return 'var(--muted)'; if(r>=108)return 'var(--heat5)'; if(r>=104)return 'var(--heat4)'; if(r>=101)return 'var(--heat3)'; if(r>=97)return 'var(--muted)'; return 'var(--heat1)'; }
+function tiltColor(t){ if(t>=2)return 'var(--heat5)'; if(t>=1)return 'var(--heat4)'; if(t===0)return 'var(--muted)'; if(t>=-1)return 'var(--heat2)'; return 'var(--heat1)'; }
+
+function toggleLock(id){
+  const p=S.players.find(x=>x.id===id);
+  if(p){ p.locked=!p.locked; if(p.locked)p.excluded=false; }
+  renderPool(); renderOptimizerControls();
+}
+function toggleExclude(id){
+  const p=S.players.find(x=>x.id===id);
+  if(p){ p.excluded=!p.excluded; if(p.excluded)p.locked=false; }
+  renderPool(); renderOptimizerControls();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// OPTIMIZER CONTROLS
+// ═══════════════════════════════════════════════════════════════
+function renderOptimizerControls(){
+  const teams=[...new Set(S.players.filter(p=>!p.isPitcher).map(p=>p.team))].sort();
+  const stackSel=document.getElementById('stackTeam');
+  if(stackSel){
+    const cur=stackSel.value;
+    stackSel.innerHTML='<option value="auto">Auto (Highest Implied)</option>';
+    teams.forEach(t=>{ const o=document.createElement('option'); o.value=t; o.textContent=`${t} (${(S.teamImplied[t]||4.5).toFixed(1)} impl)`; stackSel.appendChild(o); });
+    if(cur) stackSel.value=cur;
+  }
+  const chips=document.getElementById('excludeTeamChips');
+  if(chips) chips.innerHTML=teams.map(t=>`<div class="team-chip ${S.excludedTeams.has(t)?'excluded-team':''}" onclick="toggleExcludeTeam('${t}')">${t}</div>`).join('');
+  const locked=S.players.filter(p=>p.locked);
+  const excl=S.players.filter(p=>p.excluded);
+  document.getElementById('lockedPlayersList').innerHTML=locked.length?locked.map(p=>`<span style="background:var(--green-dim);border:1px solid var(--green);color:var(--green);padding:3px 8px;border-radius:4px;margin:3px;display:inline-block;font-size:12px">🔒 ${p.name} (${p.isPitcher?'P':p.rosterPosition})</span>`).join(''):'<span style="color:var(--muted)">No players locked.</span>';
+  document.getElementById('excludedPlayersList').innerHTML=excl.length?excl.map(p=>`<span style="background:rgba(248,81,73,.1);border:1px solid var(--red);color:var(--red);padding:3px 8px;border-radius:4px;margin:3px;display:inline-block;font-size:12px">✖ ${p.name}</span>`).join(''):'<span style="color:var(--muted)">No players excluded.</span>';
+}
+
+function toggleExcludeTeam(t){
+  if(S.excludedTeams.has(t)) S.excludedTeams.delete(t); else S.excludedTeams.add(t);
+  renderOptimizerControls();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// OPTIMIZER ENGINE
+// ═══════════════════════════════════════════════════════════════
+const CAP=50000;
+const SLOTS={P:2,C:1,'1B':1,'2B':1,'3B':1,SS:1,OF:3};
+
+function scorePlayer(p, noise){
+  let v = p.avgPoints + (Math.random()*2-1)*noise;
+  if(!p.isPitcher){
+    v += ((S.teamImplied[p.team]||4.5)-4.5)*0.4;
+    const home = p.gameKey?.split('@')[1];
+    const pf = PARKS[home]?.run||100;
+    v += (pf-100)/100*0.15*p.avgPoints;
+  }
+  const umpKey = S.games.find(g=>g.gameKey===p.gameKey)?.ump||'';
+  const umpTilt = UMPS[umpKey]?.tilt||0;
+  v += p.isPitcher ? umpTilt*-0.3 : umpTilt*0.2;
+  return v;
+}
+
+function canFill(byPosCheap, usedIds, filled, budget){
+  let cost=0;
+  for(const [pos,need] of Object.entries(SLOTS)){
+    const short=need-(filled[pos]||0);
+    if(short<=0) continue;
+    const avail=(byPosCheap[pos]||[]).filter(p=>!usedIds.has(p.id));
+    if(avail.length<short) return null;
+    cost+=avail.slice(0,short).reduce((a,p)=>a+p.salary,0);
+  }
+  return budget>=cost?cost:null;
+}
+
+function buildLineup(scored, byPosScore, byPosCheap, stackTeam, stackSize, usedLineups, minUnique){
+  const stackCands=[...['C','1B','2B','3B','SS','OF'].flatMap(pos=>(byPosScore[pos]||[]).filter(p=>p.team===stackTeam))];
+  stackCands.sort((a,b)=>b.sc-a.sc);
+  const top=stackCands.slice(0,Math.min(10,stackCands.length));
+
+  let best=null, bestV=-Infinity;
+  const tryCombo=(combo)=>{
+    const sal=combo.reduce((a,p)=>a+p.salary,0);
+    const used=new Set(combo.map(p=>p.id));
+    const fill={};
+    combo.forEach(p=>fill[p.pos]=(fill[p.pos]||0)+1);
+    const mc=canFill(byPosCheap,used,fill,CAP-sal);
+    if(mc!==null){
+      const v=combo.reduce((a,p)=>a+p.sc,0);
+      if(v>bestV){bestV=v;best=combo;}
+    }
+  };
+
+  // Generate combinations of stackSize from top candidates
+  const genCombos=(arr,size,start=0,cur=[])=>{
+    if(cur.length===size){tryCombo([...cur]);return;}
+    for(let i=start;i<arr.length;i++) genCombos(arr,size,i+1,[...cur,arr[i]]);
+  };
+  genCombos(top,Math.min(stackSize,top.length));
+  if(!best) return null;
+
+  const lineup=[...best];
+  const usedIds=new Set(lineup.map(p=>p.id));
+  let salUsed=lineup.reduce((a,p)=>a+p.salary,0);
+  const filled={};
+  lineup.forEach(p=>filled[p.pos]=(filled[p.pos]||0)+1);
+
+  for(const [pos,need] of Object.entries(SLOTS)){
+    let short=need-(filled[pos]||0);
+    for(const c of (byPosScore[pos]||[])){
+      if(short<=0) break;
+      if(usedIds.has(c.id)) continue;
+      const tu=new Set([...usedIds,c.id]);
+      const tf={...filled,[pos]:(filled[pos]||0)+1};
+      const rb=CAP-salUsed-c.salary;
+      if(rb>=0 && canFill(byPosCheap,tu,tf,rb)!==null){
+        lineup.push(c); usedIds.add(c.id); salUsed+=c.salary; filled[pos]=(filled[pos]||0)+1; short--;
+      }
+    }
+  }
+  if(lineup.length!==10||salUsed>CAP) return null;
+
+  // Uniqueness check
+  if(usedLineups.length>0 && minUnique>0){
+    for(const prev of usedLineups){
+      const prevIds=new Set(prev.players.map(p=>p.id));
+      const shared=lineup.filter(p=>prevIds.has(p.id)).length;
+      if(10-shared<minUnique) return null;
+    }
+  }
+  return {players:lineup, salary:salUsed, projected:+lineup.reduce((a,p)=>a+p.sc,0).toFixed(2), stackTeam};
+}
+
+function runOptimizer(){
+  if(!S.players.length){ alert('Please upload a DraftKings CSV first.'); return; }
+  const btn=document.getElementById('runBtn');
+  const status=document.getElementById('optStatus');
+  btn.disabled=true; btn.textContent='⚙️ Optimizing...'; status.textContent='';
+
+  setTimeout(()=>{
+    const num=parseInt(document.getElementById('numLineups').value)||20;
+    const stackTeamSetting=document.getElementById('stackTeam').value;
+    const stackSize=parseInt(document.getElementById('stackSize').value)||4;
+    const noise=parseFloat(document.getElementById('noiseLevel').value)||1.5;
+    const maxExp=parseInt(document.getElementById('maxExposure').value)||100;
+    const minUnique=parseInt(document.getElementById('minUnique').value)||4;
+    const excl=new Set(S.players.filter(p=>p.excluded).map(p=>p.id));
+
+    const active=S.players.filter(p=>!p.excluded && !S.excludedTeams.has(p.team));
+    const scored=active.map(p=>({...p,sc:scorePlayer(p,noise),pos:p.isPitcher?'P':p.rosterPosition}));
+    const byPosScore={}, byPosCheap={};
+    scored.forEach(p=>{
+      (byPosScore[p.pos]||(byPosScore[p.pos]=[])).push(p);
+      (byPosCheap[p.pos]||(byPosCheap[p.pos]=[])).push(p);
+    });
+    for(const k in byPosScore) byPosScore[k].sort((a,b)=>b.sc-a.sc);
+    for(const k in byPosCheap) byPosCheap[k].sort((a,b)=>a.salary-b.salary);
+
+    // Determine stack teams
+    const hitterTeams=[...new Set(active.filter(p=>!p.isPitcher).map(p=>p.team))];
+    const teamsByImplied=hitterTeams.sort((a,b)=>(S.teamImplied[b]||4.5)-(S.teamImplied[a]||4.5));
+
+    S.lineups=[];
+    const playerExp={};
+    let attempts=0;
+    while(S.lineups.length<num && attempts<num*20){
+      attempts++;
+      // Re-score with new noise each attempt
+      const sc2=active.map(p=>({...p,sc:scorePlayer(p,noise),pos:p.isPitcher?'P':p.rosterPosition}));
+      const bps2={}, bpc2={};
+      sc2.forEach(p=>{ (bps2[p.pos]||(bps2[p.pos]=[])).push(p); (bpc2[p.pos]||(bpc2[p.pos]=[])).push(p); });
+      for(const k in bps2) bps2[k].sort((a,b)=>b.sc-a.sc);
+      for(const k in bpc2) bpc2[k].sort((a,b)=>a.salary-b.salary);
+
+      let st=stackTeamSetting==='auto'?teamsByImplied[S.lineups.length%Math.min(3,teamsByImplied.length)]:stackTeamSetting;
+      const lu=buildLineup(sc2,bps2,bpc2,st,stackSize,S.lineups,minUnique);
+      if(!lu) continue;
+
+      // Exposure check
+      let pass=true;
+      if(maxExp<100){
+        for(const p of lu.players){
+          const exp=((playerExp[p.id]||0)+1)/(S.lineups.length+1)*100;
+          if(exp>maxExp){pass=false;break;}
+        }
+      }
+      if(pass){
+        S.lineups.push(lu);
+        lu.players.forEach(p=>playerExp[p.id]=(playerExp[p.id]||0)+1);
+      }
+    }
+
+    document.getElementById('lineupCount').textContent=S.lineups.length;
+    btn.disabled=false; btn.textContent='⚡ Generate Lineups';
+    status.textContent=`Generated ${S.lineups.length} lineup${S.lineups.length!==1?'s':''} in ${attempts} attempts.`;
+    renderLineups();
+    showTab('lineups');
+  },50);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER LINEUPS
+// ═══════════════════════════════════════════════════════════════
+function renderLineups(){
+  const el=document.getElementById('lineupsContent');
+  const statsEl=document.getElementById('lineupStats');
+  if(!S.lineups.length){ el.innerHTML='<div class="empty"><div class="e-icon">⚡</div><p>No lineups yet. <span class="e-action" onclick="showTab('optimizer')">Go to Optimizer →</span></p></div>'; return; }
+  const avgSal=+(S.lineups.reduce((a,l)=>a+l.salary,0)/S.lineups.length).toFixed(0);
+  const avgProj=+(S.lineups.reduce((a,l)=>a+l.projected,0)/S.lineups.length).toFixed(1);
+  statsEl.textContent=`${S.lineups.length} lineups | Avg Salary: $${avgSal.toLocaleString()} | Avg Proj: ${avgProj}`;
+  const slotOrder=['P','P','C','1B','2B','3B','SS','OF','OF','OF'];
+  el.innerHTML=`<div class="table-container"><table class="lu-table">
+    <thead><tr><th>#</th><th>SP1</th><th>SP2</th><th>C</th><th>1B</th><th>2B</th><th>3B</th><th>SS</th><th>OF1</th><th>OF2</th><th>OF3</th><th>Salary</th><th>Proj</th><th>Stack</th></tr></thead>
+    <tbody>${S.lineups.map((lu,i)=>{
+      const sorted=[];
+      const usedIdx=new Set();
+      slotOrder.forEach(slot=>{
+        const match=lu.players.find((p,j)=>!usedIdx.has(j)&&(slot==='P'?p.isPitcher:p.rosterPosition===slot));
+        if(match){usedIdx.add(lu.players.indexOf(match));sorted.push(match);}
+      });
+      const salPct=lu.salary/CAP;
+      return `<tr>
+        <td style="color:var(--muted)">${i+1}</td>
+        ${sorted.map(p=>`<td><div class="lu-player"><span class="p-name" style="color:${HEAT_COLORS[p.heatTier||2]}">${p.name}</span><span class="p-meta">${p.team} $${(p.salary/1000).toFixed(1)}k</span></div></td>`).join('')}
+        <td>
+          <div style="font-weight:600">$${lu.salary.toLocaleString()}</div>
+          <div class="salary-bar" style="width:${salPct*100}%"></div>
+        </td>
+        <td style="color:var(--green);font-weight:600">${lu.projected}</td>
+        <td><span class="pos-badge" style="background:var(--green-dim);color:var(--green)">${lu.stackTeam}</span></td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════════════════════════════════
+function exportLineups(){
+  if(!S.lineups.length){alert('No lineups to export.');return;}
+  const slotOrder=['P','P','C','1B','2B','3B','SS','OF','OF','OF'];
+  const rows=[['#','SP1','SP1_Sal','SP2','SP2_Sal','C','C_Sal','1B','1B_Sal','2B','2B_Sal','3B','3B_Sal','SS','SS_Sal','OF1','OF1_Sal','OF2','OF2_Sal','OF3','OF3_Sal','TotalSalary','Projected','Stack']];
+  S.lineups.forEach((lu,i)=>{
+    const sorted=[];
+    const ui=new Set();
+    slotOrder.forEach(slot=>{ const m=lu.players.find((p,j)=>!ui.has(j)&&(slot==='P'?p.isPitcher:p.rosterPosition===slot)); if(m){ui.add(lu.players.indexOf(m));sorted.push(m);} });
+    const row=[i+1];
+    sorted.forEach(p=>{row.push(p.name,p.salary);});
+    row.push(lu.salary,lu.projected,lu.stackTeam);
+    rows.push(row);
+  });
+  dlCSV(rows,'MLB_DFS_Playbook_Lineups.csv');
+}
+
+function exportDKUpload(){
+  if(!S.lineups.length){alert('No lineups to export.');return;}
+  const slotOrder=['P','P','C','1B','2B','3B','SS','OF','OF','OF'];
+  const rows=[['P','P','C','1B','2B','3B','SS','OF','OF','OF']];
+  S.lineups.forEach(lu=>{
+    const sorted=[];const ui=new Set();
+    slotOrder.forEach(slot=>{ const m=lu.players.find((p,j)=>!ui.has(j)&&(slot==='P'?p.isPitcher:p.rosterPosition===slot)); if(m){ui.add(lu.players.indexOf(m));sorted.push(m);} });
+    rows.push(sorted.map(p=>p.id));
+  });
+  dlCSV(rows,'MLB_DFS_Playbook_DK_Upload.csv');
+}
+
+function dlCSV(rows,fname){
+  const csv=rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
+  const a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv); a.download=fname; a.click();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CONFIRMED LINEUPS
+// ═══════════════════════════════════════════════════════════════
+function renderConfirmed(){
+  const grid=document.getElementById('confirmedGrid');
+  const status=document.getElementById('confirmedStatus');
+  const keys=Object.keys(S.confirmedLineups);
+  if(!keys.length){ grid.innerHTML='<div class="empty"><div class="e-icon">⏳</div><p>No confirmed lineups yet. Lineups typically post 60-90 min before first pitch.</p></div>'; return; }
+  const confirmed=keys.filter(k=>S.confirmedLineups[k].awayConfirmed||S.confirmedLineups[k].homeConfirmed).length;
+  status.textContent=`${confirmed} of ${keys.length*2} lineups confirmed`;
+  grid.innerHTML=keys.map(key=>{
+    const d=S.confirmedLineups[key]; const [away,home]=key.split('@');
+    return ['away','home'].map(side=>{
+      const team=side==='away'?away:home;
+      const players=side==='away'?d.awayLineup:d.homeLineup;
+      const pitcher=side==='away'?d.awayPitcher:d.homePitcher;
+      const conf=side==='away'?d.awayConfirmed:d.homeConfirmed;
+      const impl=S.teamImplied[team];
+      return `<div class="conf-card">
+        <div class="conf-header">
+          <div>
+            <div class="conf-team">${team} <span style="color:var(--muted);font-weight:400;font-size:12px">vs ${side==='away'?home:away}</span></div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">SP: ${pitcher}${impl?` | Impl: ${impl.toFixed(1)}`:''}</div>
+          </div>
+          <span class="conf-status ${conf?'confirmed':'projected'}">${conf?'Confirmed':'Projected'}</span>
+        </div>
+        ${conf?players.map((p,i)=>`<div class="batter-row"><span class="bat-order">${i+1}.</span><span>${p.fullName}</span><span class="bat-hand">${p.batSide?.code||''}</span></div>`).join(''):'<div style="color:var(--muted);font-size:12px;padding:8px 0">Lineup not yet confirmed</div>'}
+      </div>`;
+    }).join('');
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SLATE OVERVIEW GENERATOR
+// ═══════════════════════════════════════════════════════════════
+function generateOverview(){
+  document.getElementById('overview-loading').style.display='none';
+  document.getElementById('overview-content').style.display='block';
+
+  const games=S.games;
+  if(!games.length && !S.players.length){
+    document.getElementById('overview-loading').style.display='block';
+    document.getElementById('overview-content').style.display='none';
+    return;
+  }
+
+  // Stats row
+  const topOU=games.length?Math.max(...games.map(g=>g.ou||0)):0;
+  const topImpl=Object.values(S.teamImplied).length?Math.max(...Object.values(S.teamImplied)):0;
+  const domeGames=games.filter(g=>g.isDome).length;
+  document.getElementById('overviewStats').innerHTML=`
+    <div class="stat-box"><div class="s-val">${games.length||'—'}</div><div class="s-lbl">Games</div></div>
+    <div class="stat-box"><div class="s-val">${topOU||'—'}</div><div class="s-lbl">Highest O/U</div></div>
+    <div class="stat-box"><div class="s-val">${topImpl?topImpl.toFixed(1):'—'}</div><div class="s-lbl">Top Implied</div></div>
+    <div class="stat-box"><div class="s-val">${domeGames}</div><div class="s-lbl">Dome Games</div></div>
+    <div class="stat-box"><div class="s-val">${S.players.length||'—'}</div><div class="s-lbl">Players</div></div>`;
+
+  // Game cards
+  const sorted=[...games].sort((a,b)=>((b.awayImpl||0)+(b.homeImpl||0))-((a.awayImpl||0)+(a.homeImpl||0)));
+  const topGame=sorted[0];
+  const avoidGames=games.filter(g=>{ const u=UMPS[g.ump]; return u&&u.tilt<=-1; });
+  document.getElementById('gameCards').innerHTML=games.map(g=>{
+    const isTop=g.gameKey===topGame?.gameKey;
+    const isAvoid=avoidGames.some(ag=>ag.gameKey===g.gameKey);
+    const ump=UMPS[g.ump]||{tilt:0,env:'neutral'};
+    const park=PARKS[g.home]||{run:100,hr:100};
+    const warnFlags=[];
+    if(!g.isDome&&g.weather?.wind>=15) warnFlags.push(`<span class="flag green">💨 Wind Out ${g.weather.wind}mph</span>`);
+    if(!g.isDome&&g.weather?.wind>=10&&g.weather?.windDir?.includes('In')) warnFlags.push(`<span class="flag red">🌬 Wind In</span>`);
+    if(!g.isDome&&g.weather?.temp<50) warnFlags.push(`<span class="flag red">🥶 Cold ${g.weather.temp}°F</span>`);
+    const umpStr=g.ump?`${g.ump.split(' ').pop()} (${ump.tilt>=0?'+':''}${ump.tilt})`:'—';
+    const weatherStr=g.isDome?'🏟 Dome':`${g.weather?.temp||'?'}°F ${g.weather?.cond||''}`;
+    return `<div class="game-card ${isTop?'top-game':''} ${isAvoid?'avoid-game':''}">
+      <div class="gc-header">
+        <div class="gc-matchup">${g.away} @ ${g.home}</div>
+        <div class="gc-ou">O/U <span>${g.ou||'—'}</span></div>
+      </div>
+      <div class="gc-row"><span>Implied</span><span class="val">${g.awayImpl?`${g.awayImpl}/${g.homeImpl}`:'—'}</span></div>
+      <div class="gc-row"><span>Park (HR)</span><span class="val" style="color:${parkColor(park.run)}">${park.hr}</span></div>
+      <div class="gc-row"><span>Ump</span><span class="val" style="color:${tiltColor(ump.tilt)}">${umpStr}</span></div>
+      <div class="gc-weather">${weatherStr}${warnFlags.join(' ')}</div>
+    </div>`;
+  }).join('');
+
+  // Analysis paragraphs
+  const analysis=buildAnalysis(games,sorted,avoidGames);
+  document.getElementById('analysisBlocks').innerHTML=analysis.map(([title,text])=>`
+    <div class="analysis-section"><div class="analysis-title">${title}</div><div class="analysis-text">${text}</div></div>`).join('');
+
+  // Top players (using pool data)
+  if(S.players.length){
+    const pitchers=S.players.filter(p=>p.isPitcher).sort((a,b)=>b.avgPoints-a.avgPoints);
+    const hitters=S.players.filter(p=>!p.isPitcher).sort((a,b)=>b.avgPoints-a.avgPoints);
+    const values=[...S.players].sort((a,b)=>b.valueScore-a.valueScore);
+
+    const mkItem=(p,i,metric,label)=>{
+      const pos=p.isPitcher?'P':p.rosterPosition;
+      const impl=S.teamImplied[p.team];
+      return `<div class="top-item">
+        <div class="top-rank">${i+1}</div>
+        <span class="pos-badge pos-${pos}">${pos}</span>
+        <div class="top-info">
+          <div class="top-name" style="color:${HEAT_COLORS[p.heatTier||2]}">${p.name}</div>
+          <div class="top-meta">${p.team} vs ${p.opponent||'?'} | $${p.salary.toLocaleString()}${impl?` | Impl: ${impl.toFixed(1)}`:''}</div>
+        </div>
+        <div class="top-score"><div class="val" style="color:var(--green)">${typeof metric==='function'?metric(p):p[metric]}</div><div class="lbl">${label}</div></div>
+      </div>`;
+    };
+
+    document.getElementById('topPitchers').innerHTML=pitchers.slice(0,6).map((p,i)=>mkItem(p,i,'avgPoints','FPTS')).join('');
+    document.getElementById('topBatters').innerHTML=hitters.slice(0,8).map((p,i)=>mkItem(p,i,'avgPoints','FPTS')).join('');
+    document.getElementById('topValues').innerHTML=values.slice(0,8).map((p,i)=>mkItem(p,i,p=>p.valueScore.toFixed(2),'Val')).join('');
+
+    // Stack targets
+    const teamScores={};
+    S.players.filter(p=>!p.isPitcher).forEach(p=>{
+      if(!teamScores[p.team])teamScores[p.team]={team:p.team,totalImpl:S.teamImplied[p.team]||4.5,topAvg:0,players:[]};
+      teamScores[p.team].players.push(p);
+      if(p.avgPoints>teamScores[p.team].topAvg)teamScores[p.team].topAvg=p.avgPoints;
+    });
+    const stacks=Object.values(teamScores).sort((a,b)=>b.totalImpl-a.totalImpl).slice(0,6);
+    document.getElementById('stackTargets').innerHTML=stacks.map((t,i)=>{
+      const park=PARKS[t.players[0]?.gameKey?.split('@')[1]]||{run:100,hr:100};
+      const gameUmp=S.games.find(g=>g.away===t.team||g.home===t.team)?.ump||'';
+      const umpTilt=UMPS[gameUmp]?.tilt||0;
+      return `<div class="top-item">
+        <div class="top-rank">${i+1}</div>
+        <div class="top-info">
+          <div class="top-name">${t.team} Stack</div>
+          <div class="top-meta">Park HR: ${park.hr} | Ump: ${umpTilt>=0?'+':''}${umpTilt} | ${t.players.length} eligible</div>
+        </div>
+        <div class="top-score"><div class="val" style="color:var(--green)">${t.totalImpl.toFixed(1)}</div><div class="lbl">Implied</div></div>
+      </div>`;
+    }).join('');
+  }
+}
+
+function buildAnalysis(games, sorted, avoidGames){
+  const out=[];
+  if(!games.length&&!S.players.length) return [['📊 Awaiting Data','Load a DraftKings CSV and click Refresh Data to generate analysis.']];
+  const top=sorted[0];
+  const hitterUmpGames=games.filter(g=>UMPS[g.ump]?.tilt>=1);
+  const pitcherUmpGames=games.filter(g=>UMPS[g.ump]?.tilt<=-1);
+  const topTeam=top?Object.entries(S.teamImplied).sort((a,b)=>b[1]-a[1])[0]?.[0]:'';
+
+  // Para 1: Targeting
+  if(top||topTeam){
+    let p=`Today's ${games.length}-game slate `;
+    if(top&&top.ou) p+=`is headlined by the <strong>${top.gameKey}</strong> matchup at ${top.venue||top.gameKey}, carrying the highest combined implied total at O/U <strong>${top.ou}</strong>. `;
+    if(topTeam) p+=`The <strong>${topTeam}</strong> offense is the top stack target with a projected implied total of <strong>${(S.teamImplied[topTeam]||0).toFixed(1)} runs</strong>. `;
+    if(sorted[1]) p+=`Secondary targets include <strong>${sorted[1].gameKey}</strong> (O/U ${sorted[1].ou||'—'}) with combined upside for both offenses.`;
+    out.push(['🎯 Targeting', p]);
+  }
+
+  // Para 2: Umpires
+  if(hitterUmpGames.length||pitcherUmpGames.length){
+    let p='';
+    if(hitterUmpGames.length){
+      const names=[...new Set(hitterUmpGames.map(g=>g.ump))];
+      p+=`<strong>${names.join(', ')}</strong> works behind the plate in ${hitterUmpGames.map(g=>g.gameKey).join(', ')} — a known tight-zone caller who inflates walk rates and suppresses strikeouts, creating a hitter-friendly run environment. Batters in these games receive a projection bump in our model. `;
+    }
+    if(pitcherUmpGames.length){
+      const names=[...new Set(pitcherUmpGames.map(g=>g.ump))];
+      p+=`Conversely, <strong>${names.join(', ')}</strong> works a wide zone in ${pitcherUmpGames.map(g=>g.gameKey).join(', ')}, projecting as a high-strikeout environment — a boost for SP salary allocation in those games.`;
+    }
+    out.push(['⚖️ Umpire Environment', p]);
+  }
+
+  // Para 3: Weather / Park
+  const domes=games.filter(g=>g.isDome);
+  const openAir=games.filter(g=>!g.isDome);
+  let wp=`${domes.length} of ${games.length} games today are in domes or retractable-roof venues (${domes.map(g=>g.gameKey).join(', ')}), eliminating weather as a variable. `;
+  if(openAir.length){
+    const topPark=openAir.sort((a,b)=>(PARKS[b.home]?.hr||100)-(PARKS[a.home]?.hr||100))[0];
+    const botPark=openAir.sort((a,b)=>(PARKS[a.home]?.hr||100)-(PARKS[b.home]?.hr||100))[0];
+    if(topPark) wp+=`<strong>${PARKS[topPark.home]?.venue||topPark.home}</strong> is the most HR-friendly outdoor venue (HR factor: ${PARKS[topPark.home]?.hr||'—'}). `;
+    if(botPark&&botPark.home!==topPark?.home) wp+=`<strong>${PARKS[botPark.home]?.venue||botPark.home}</strong> is the most pitcher-friendly outdoor park (HR factor: ${PARKS[botPark.home]?.hr||'—'}).`;
+  }
+  out.push(['🌤 Weather & Ballpark', wp]);
+
+  // Para 4: Fade
+  if(avoidGames.length){
+    const reasons=avoidGames.map(g=>{
+      const u=UMPS[g.ump]||{};
+      const pk=PARKS[g.home]||{run:100};
+      const r=[];
+      if(u.tilt<=-2) r.push(`pitcher-friendly ump (${g.ump})`);
+      else if(u.tilt===-1) r.push(`slightly pitcher-leaning ump`);
+      if(pk.run<=94) r.push(`suppressed park`);
+      return `<strong>${g.gameKey}</strong> (${r.join('; ')})`;
+    });
+    out.push(['🚫 Games to Fade', `The following games present multiple headwinds for hitters: ${reasons.join('; ')}. We recommend limiting exposure to these lineups unless a player offers unavoidable salary value. In GPPs, concentrate on higher-upside environments.`]);
+  }
+  return out;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SETTINGS TABLES
+// ═══════════════════════════════════════════════════════════════
+function renderSettingsTables(){
+  const pt=document.getElementById('parkTable');
+  if(pt&&!pt.innerHTML) pt.innerHTML=Object.entries(PARKS).sort().map(([k,p])=>`
+    <tr><td><strong>${k}</strong></td><td style="color:var(--muted);font-size:12px">${p.venue}</td>
+    <td style="color:${parkColor(p.run)}">${p.run}</td>
+    <td style="color:${parkColor(p.hr)}">${p.hr}</td>
+    <td>${p.dome?'<span class="flag yellow">Dome</span>':'—'}</td></tr>`).join('');
+  const ut=document.getElementById('umpTable');
+  if(ut&&!ut.innerHTML) ut.innerHTML=Object.entries(UMPS).sort().map(([k,u])=>`
+    <tr><td><strong>${k}</strong></td><td style="color:var(--muted)">${u.zone}</td>
+    <td style="color:${u.env==='hitter'?'var(--heat5)':u.env==='pitcher'?'var(--heat1)':'var(--muted)'}">${u.env}</td>
+    <td style="color:${tiltColor(u.tilt)};font-weight:600">${u.tilt>=0?'+':''}${u.tilt}</td></tr>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+(async function init(){
+  await Promise.all([fetchOddsWeather(), fetchMLBData()]).catch(()=>{});
+  generateOverview();
+})();
+</script>
+</body>
+</html>
