@@ -17,7 +17,32 @@ from pulp import (
     LpProblem, LpMaximize, LpVariable, lpSum,
     LpBinary, LpStatus, value, PULP_CBC_CMD
 )
+// ───────────────────────────────────────────
+// TEAM META: colors + logos
+// ───────────────────────────────────────────
+const TEAM_META = {
+  BAL: { name: 'Baltimore Orioles', primary: '#DF4601', secondary: '#000000', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/bal.png' },
+  BOS: { name: 'Boston Red Sox', primary: '#BD3039', secondary: '#0D2B56', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/bos.png' },
+  NYY: { name: 'New York Yankees', primary: '#0C2340', secondary: '#C4CED3', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/nyy.png' },
+  TB:  { name: 'Tampa Bay Rays', primary: '#092C5C', secondary: '#8FBCE6', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/tb.png' },
+  TOR: { name: 'Toronto Blue Jays', primary: '#134A8E', secondary: '#1D2D5C', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/tor.png' },
 
+  CHC: { name: 'Chicago Cubs', primary: '#0E3386', secondary: '#CC3433', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/chc.png' },
+  STL: { name: 'St. Louis Cardinals', primary: '#C41E3A', secondary: '#0A2252', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/stl.png' },
+  MIL: { name: 'Milwaukee Brewers', primary: '#12284B', secondary: '#FFC52F', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/mil.png' },
+  PIT: { name: 'Pittsburgh Pirates', primary: '#FDB827', secondary: '#000000', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/pit.png' },
+  CIN: { name: 'Cincinnati Reds', primary: '#C6011F', secondary: '#000000', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/cin.png' },
+
+  MIA: { name: 'Miami Marlins', primary: '#00A3E0', secondary: '#EF3340', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/mia.png' },
+  WSH: { name: 'Washington Nationals', primary: '#AB0003', secondary: '#14225A', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/wsh.png' },
+  OAK: { name: 'Oakland Athletics', primary: '#003831', secondary: '#EFB21E', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/oak.png' },
+  MIN: { name: 'Minnesota Twins', primary: '#002B5C', secondary: '#D31145', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/min.png' },
+  // add more teams later as needed
+};
+
+function getTeamMeta(abbr) {
+  return TEAM_META[abbr] || { name: abbr, primary: '#222222', secondary: '#555555', logo: '' };
+}
 try:
     import statsapi
     STATSAPI_OK = True
