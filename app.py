@@ -223,6 +223,93 @@ def deg_to_label(deg):
     dirs = ["N","NNE","NE","ENE","E","ESE","SE","SSE",
             "S","SSW","SW","WSW","W","WNW","NW","NNW"]
     return dirs[round(deg / 22.5) % 16]
+    # ─────────────────────────────────────────────────────────────────────────────
+# ENVIRONMENT SCORES (HITTING & PITCHING)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def compute_hitting_env_score(park_runs, temp_f, wind_mph, wind_deg, is_dome, precip_pct):
+    """Higher = better for hitters. 0 is neutral-ish."""
+    if is_dome:
+        base = 0.5  # domes are usually slightly hitter neutral to friendly
+        park_term = (park_runs - 1.0) * 4.0
+        return round(base + park_term, 2)
+
+    score = 0.0
+    # Park runs: 0.0 at 1.00, about +/- 3 at extremes like COL / SEA
+    score += (park_runs - 1.0) * 4.0
+
+    # Temperature: hot = good for bats
+    if temp_f >= 85:
+        score += 2.0
+    elif temp_f >= 78:
+        score += 1.2
+    elif temp_f >= 70:
+        score += 0.5
+    elif temp_f <= 45:
+        score -= 2.0
+    elif temp_f <= 55:
+        score -= 1.0
+
+    # Wind
+    norm = wind_deg % 360
+    if 315 <= norm or norm <= 45:  # blowing out
+        if wind_mph >= 18:
+            score += 2.0
+        elif wind_mph >= 10:
+            score += 1.0
+        elif wind_mph >= 6:
+            score += 0.4
+    elif 135 <= norm <= 225:       # blowing in
+        if wind_mph >= 18:
+            score -= 1.8
+        elif wind_mph >= 10:
+            score -= 1.0
+
+    # Rain: heavy rain knocks it down slightly
+    if precip_pct >= 60:
+        score -= 1.0
+    elif precip_pct >= 40:
+        score -= 0.4
+
+    return round(score, 2)
+
+
+def compute_pitcher_env_score(park_runs, temp_f, wind_mph, wind_deg, is_dome, precip_pct, opp_total):
+    """Higher = better for pitchers (lower scoring environment + low opp total)."""
+    hit_score = compute_hitting_env_score(park_runs, temp_f, wind_mph, wind_deg, is_dome, precip_pct)
+    score = -hit_score  # inverse of hitting environment
+
+    # Opponent implied total: biggest driver for SP
+    if opp_total <= 3.0:
+        score += 3.0
+    elif opp_total <= 3.5:
+        score += 2.0
+    elif opp_total <= 4.0:
+        score += 1.0
+    elif opp_total >= 5.0:
+        score -= 1.0
+
+    return round(score, 2)
+
+
+def tier_from_score(score, for_pitcher=False):
+    """Return (tier, label) given an environment score."""
+    if for_pitcher:
+        if score >= 4.0:
+            return "elite",   "🧊 Elite Pitching Spot"
+        if score >= 2.5:
+            return "good",    "👍 Solid Pitching Spot"
+        if score <= -1.5:
+            return "avoid",   "🔥 Risky for SP"
+        return "neutral",     "⚖️ Neutral SP Spot"
+    else:
+        if score >= 4.0:
+            return "elite",   "🔥 Elite Hitting Spot"
+        if score >= 2.5:
+            return "good",    "↑ Good Hitting Spot"
+        if score <= -1.5:
+            return "cold",    "❄️ Cold for Bats"
+        return "neutral",     "⚖️ Neutral Hitting Spot"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PROJECTION ENGINE
