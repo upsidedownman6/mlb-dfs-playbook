@@ -924,7 +924,7 @@ with tab_slate:
                 away_p_tier, away_p_label = tier_from_score(away_p_score, for_pitcher=True)
                 home_p_tier, home_p_label = tier_from_score(home_p_score, for_pitcher=True)
 
-                               with gcols[col_i]:
+                with gcols[col_i]:
                     st.markdown(f"### {away} @ {home}")
                     st.caption(PARK_NAMES.get(norm_team(home), ""))
 
