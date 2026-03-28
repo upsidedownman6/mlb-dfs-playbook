@@ -748,7 +748,7 @@ with tab_slate:
                 )
                 wind_label = deg_to_label(w["wind_deg"]) if not is_dome else "—"
                 temp_color = "#58A6FF" if w["temp_f"]<55 else "#8B949E" if w["temp_f"]<68 else "#FF6D00" if w["temp_f"]<82 else "#FF1744"
-                                    st.caption(
+               st.caption(
                         f"Hitting Env Score: {hit_score} · {hit_label}  |  "
                         f"Away SP: {away_p_score} · {away_p_label}  |  "
                         f"Home SP: {home_p_score} · {home_p_label}"
