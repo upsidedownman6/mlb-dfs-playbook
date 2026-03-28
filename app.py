@@ -723,6 +723,108 @@ with tab_slate:
     if not st.session_state.games:
         st.info("Click **Load Today's Games** to auto-populate the slate.")
     else:
+        # Build summary metrics for Top Hitting & Pitching spots
+        summary_rows_hit = []
+        summary_rows_sp  = []
+
+        for g in st.session_state.games:
+            home = g.get("home", "HOME")
+            away = g.get("away", "AWAY")
+            is_dome = norm_team(home) in DOME_PARKS
+
+            coords = STADIUM_COORDS.get(norm_team(home))
+            if coords and not is_dome:
+                w = fetch_weather(coords[0], coords[1], g.get("time",""))
+            elif is_dome:
+                w = {
+                    "temp_f":72, "wind_mph":0, "wind_deg":0, "humidity":50,
+                    "precip_pct":0, "condition":"Dome 🏟️"
+                }
+            else:
+                w = {
+                    "temp_f":70, "wind_mph":5, "wind_deg":180, "humidity":50,
+                    "precip_pct":0, "condition":"Unknown"
+                }
+
+            park_runs = PARK_FACTORS.get(norm_team(home), {"runs":100})["runs"] / 100.0
+            hit_score = compute_hitting_env_score(
+                park_runs,
+                w["temp_f"],
+                w["wind_mph"],
+                w["wind_deg"],
+                is_dome,
+                w["precip_pct"],
+            )
+            hit_tier, hit_label = tier_from_score(hit_score, for_pitcher=False)
+            summary_rows_hit.append({
+                "Game": f"{away} @ {home}",
+                "Park": PARK_NAMES.get(norm_team(home), ""),
+                "Score": hit_score,
+                "Tag": hit_label,
+            })
+
+            # Pitcher env per side
+            away_opp_total = g["home_total"]
+            home_opp_total = g["away_total"]
+
+            away_p_score = compute_pitcher_env_score(
+                park_runs,
+                w["temp_f"],
+                w["wind_mph"],
+                w["wind_deg"],
+                is_dome,
+                w["precip_pct"],
+                away_opp_total,
+            )
+            home_p_score = compute_pitcher_env_score(
+                park_runs,
+                w["temp_f"],
+                w["wind_mph"],
+                w["wind_deg"],
+                is_dome,
+                w["precip_pct"],
+                home_opp_total,
+            )
+            away_p_tier, away_p_label = tier_from_score(away_p_score, for_pitcher=True)
+            home_p_tier, home_p_label = tier_from_score(home_p_score, for_pitcher=True)
+
+            summary_rows_sp.append({
+                "Team": away,
+                "Opp":  home,
+                "Score": away_p_score,
+                "Tag":  away_p_label,
+            })
+            summary_rows_sp.append({
+                "Team": home,
+                "Opp":  away,
+                "Score": home_p_score,
+                "Tag":  home_p_label,
+            })
+
+        # Sort and display top spots
+        if summary_rows_hit:
+            hit_df = pd.DataFrame(summary_rows_hit).sort_values("Score", ascending=False).head(5)
+            sp_df  = pd.DataFrame(summary_rows_sp).sort_values("Score", ascending=False).head(5)
+
+            hc1, hc2 = st.columns(2)
+            with hc1:
+                st.markdown("**Top Hitting Spots**")
+                st.dataframe(
+                    hit_df,
+                    hide_index=True,
+                    use_container_width=True,
+                    height=min(220, 40 + 35*len(hit_df)),
+                )
+            with hc2:
+                st.markdown("**Top Pitching Spots**")
+                st.dataframe(
+                    sp_df,
+                    hide_index=True,
+                    use_container_width=True,
+                    height=min(220, 40 + 35*len(sp_df)),
+                )
+
+        # Now render individual game cards
         n_games = len(st.session_state.games)
         for row_i in range(0, n_games, 2):
             gcols = st.columns(2)
@@ -751,14 +853,7 @@ with tab_slate:
                     w["precip_pct"], is_dome
                 )
                 wind_label = deg_to_label(w["wind_deg"]) if not is_dome else "—"
-                temp_color = (
-                    "#58A6FF" if w["temp_f"] < 55 else
-                    "#8B949E" if w["temp_f"] < 68 else
-                    "#FF6D00" if w["temp_f"] < 82 else
-                    "#FF1744"
-                )
 
-                # Environment scores
                 park_runs = PARK_FACTORS.get(norm_team(home), {"runs":100})["runs"] / 100.0
                 hit_score = compute_hitting_env_score(
                     park_runs,
@@ -770,7 +865,6 @@ with tab_slate:
                 )
                 hit_tier, hit_label = tier_from_score(hit_score, for_pitcher=False)
 
-                # Pitcher spots (one per side, using opp implied totals)
                 away_opp_total = g["home_total"]
                 home_opp_total = g["away_total"]
                 away_p_score = compute_pitcher_env_score(
@@ -865,7 +959,7 @@ with tab_pool:
     if uploaded:
         df_new = parse_dk_csv(uploaded.read())
         if not df_new.empty:
-            if not st.session_state.players.empty:
+             if not st.session_state.players.empty:
                 old = st.session_state.players.set_index("id")
                 df_new["locked"]      = df_new["id"].map(lambda i: old.loc[i,"locked"]   if i in old.index else False)
                 df_new["excluded"]    = df_new["id"].map(lambda i: old.loc[i,"excluded"] if i in old.index else False)
