@@ -17,32 +17,20 @@ from pulp import (
     LpProblem, LpMaximize, LpVariable, lpSum,
     LpBinary, LpStatus, value, PULP_CBC_CMD
 )
-// ───────────────────────────────────────────
-// TEAM META: colors + logos
-// ───────────────────────────────────────────
-const TEAM_META = {
-  BAL: { name: 'Baltimore Orioles', primary: '#DF4601', secondary: '#000000', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/bal.png' },
-  BOS: { name: 'Boston Red Sox', primary: '#BD3039', secondary: '#0D2B56', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/bos.png' },
-  NYY: { name: 'New York Yankees', primary: '#0C2340', secondary: '#C4CED3', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/nyy.png' },
-  TB:  { name: 'Tampa Bay Rays', primary: '#092C5C', secondary: '#8FBCE6', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/tb.png' },
-  TOR: { name: 'Toronto Blue Jays', primary: '#134A8E', secondary: '#1D2D5C', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/tor.png' },
+import pandas as pd
+import streamlit as st
+# ... your other imports ...
 
-  CHC: { name: 'Chicago Cubs', primary: '#0E3386', secondary: '#CC3433', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/chc.png' },
-  STL: { name: 'St. Louis Cardinals', primary: '#C41E3A', secondary: '#0A2252', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/stl.png' },
-  MIL: { name: 'Milwaukee Brewers', primary: '#12284B', secondary: '#FFC52F', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/mil.png' },
-  PIT: { name: 'Pittsburgh Pirates', primary: '#FDB827', secondary: '#000000', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/pit.png' },
-  CIN: { name: 'Cincinnati Reds', primary: '#C6011F', secondary: '#000000', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/cin.png' },
-
-  MIA: { name: 'Miami Marlins', primary: '#00A3E0', secondary: '#EF3340', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/mia.png' },
-  WSH: { name: 'Washington Nationals', primary: '#AB0003', secondary: '#14225A', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/wsh.png' },
-  OAK: { name: 'Oakland Athletics', primary: '#003831', secondary: '#EFB21E', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/oak.png' },
-  MIN: { name: 'Minnesota Twins', primary: '#002B5C', secondary: '#D31145', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/min.png' },
-  // add more teams later as needed
-};
-
-function getTeamMeta(abbr) {
-  return TEAM_META[abbr] || { name: abbr, primary: '#222222', secondary: '#555555', logo: '' };
-}
+def leverage_color(val):
+    if pd.isna(val):
+        return ""
+    if val >= 1.4:
+        return "background-color:#145A32;color:white;"
+    if val >= 1.0:
+        return "background-color:#1E8449;color:white;"
+    if val >= 0.7:
+        return "background-color:#7D6608;color:white;"
+    return "background-color:#922B21;color:white;"
 try:
     import statsapi
     STATSAPI_OK = True
@@ -1025,124 +1013,103 @@ with tab_slate:
 # ─────────────────────────────────────────────────────────────────────────────
 # TAB 2 — PLAYER POOL
 # ─────────────────────────────────────────────────────────────────────────────
-with tab_pool:
-    st.subheader("Player Pool")
+st.header("Player Pool")
 
-    uploaded = st.file_uploader(
-        "Upload DraftKings MLB player list CSV",
-        type="csv",
-        help="DK → My Contests → Upcoming → Export Player List"
+# Assume you already have player_pool built above this point
+# and that it includes a projection column, e.g. 'Proj_final'
+
+# 1) Ownership upload
+st.subheader("Projected Ownership (optional)")
+
+own_file = st.file_uploader(
+    "Upload projected ownership CSV (RG, LineStar, etc.)",
+    type=["csv"],
+    key="own_upload",
+)
+
+if own_file is not None:
+    own_df = pd.read_csv(own_file)
+    # Try to normalize common column names
+    own_df = own_df.rename(
+        columns={
+            "Name": "player_name",
+            "Player": "player_name",
+            "Team": "team",
+            "Tm": "team",
+            "Pos": "position",
+            "Position": "position",
+            "Own": "proj_own",
+            "ProjOwn": "proj_own",
+            "Projected Ownership": "proj_own",
+        }
     )
-    if uploaded:
-        df_new = parse_dk_csv(uploaded.read())
-        if not df_new.empty:
-            # Preserve existing locks/excludes/SP confirmations by ID
-            if not st.session_state.players.empty:
-                old = st.session_state.players.set_index("id")
-                df_new["locked"]      = df_new["id"].map(lambda i: old.loc[i,"locked"]   if i in old.index else False)
-                df_new["excluded"]    = df_new["id"].map(lambda i: old.loc[i,"excluded"] if i in old.index else False)
-                df_new["spConfirmed"] = df_new["id"].map(lambda i: old.loc[i,"spConfirmed"] if i in old.index else False)
-            st.session_state.players = df_new
-            # Rebuild projections
-            if st.session_state.games:
-                st.session_state.players = build_projections(st.session_state.players, st.session_state.games)
-            else:
-                st.session_state.players["finalProj"] = st.session_state.players["avg"]
-            st.success(f"Loaded {len(df_new)} players.")
-    df = st.session_state.players
-    if df.empty:
-        st.info("Upload a DK CSV above to populate the player pool.")
-    else:
-        fc1, fc2, fc3, fc4, fc5 = st.columns([1,1,1,1,2])
-        pos_opts  = ["All"] + sorted(df["pos"].dropna().unique().tolist())
-        team_opts = ["All"] + sorted(df["team"].dropna().unique().tolist())
-        f_pos  = fc1.selectbox("Position", pos_opts, key="f_pos")
-        f_team = fc2.selectbox("Team",     team_opts, key="f_team")
-        f_show = fc3.selectbox("Show",     ["All","Locked","Excluded","SP Confirmed"], key="f_show")
-        f_sort = fc4.selectbox("Sort by",  ["Final Proj","Salary","Value","DK Avg"],   key="f_sort")
+    own_df = own_df[["player_name", "team", "position", "proj_own"]]
+else:
+    own_df = None
 
-        with fc5:
-            if not df.empty:
-                teams = sorted(df["team"].dropna().unique().tolist())
-                st.markdown("**Exclude Team:**")
-                tcols = st.columns(min(len(teams), 8))
-                for i, t in enumerate(teams[:16]):
-                    if tcols[i % 8].button(t, key=f"exteam_{t}"):
-                        mask = (st.session_state.players["team"] == t) & ~st.session_state.players["locked"]
-                        st.session_state.players.loc[mask, "excluded"] = True
-                        st.rerun()
+# 2) Attach ownership to your player pool
+df = player_pool.copy()
 
-        sc1, sc2, _ = st.columns([1,1,4])
-        if sc1.button("Exclude Unconfirmed Pitchers"):
-            mask = st.session_state.players["isP"] & ~st.session_state.players["spConfirmed"] & ~st.session_state.players["locked"]
-            st.session_state.players.loc[mask, "excluded"] = True
-            st.rerun()
-        if sc2.button("Clear All Excludes"):
-            st.session_state.players["excluded"] = False
-            st.rerun()
+# Adjust these three names if your columns are different:
+name_col = "player_name"   # e.g. "Name"
+team_col = "team"          # e.g. "TeamAbbrev"
+pos_col = "position"       # e.g. "Position"
+proj_col = "Proj_final"    # your final projection column
 
-        view = df.copy()
-        if f_pos  != "All": view = view[view["pos"] == f_pos]
-        if f_team != "All": view = view[view["team"] == f_team]
-        if f_show == "Locked":     view = view[view["locked"]]
-        elif f_show == "Excluded": view = view[view["excluded"]]
-        elif f_show == "SP Confirmed": view = view[view["isP"] & view["spConfirmed"]]
+if own_df is not None:
+    df = df.merge(
+        own_df,
+        left_on=[name_col, team_col, pos_col],
+        right_on=["player_name", "team", "position"],
+        how="left",
+    )
+    df.drop(columns=["player_name_y", "team_y", "position_y"], errors="ignore", inplace=True)
+    df.rename(
+        columns={
+            "player_name_x": name_col,
+            "team_x": team_col,
+            "position_x": pos_col,
+        },
+        inplace=True,
+    )
+else:
+    df["proj_own"] = pd.NA
 
-        sort_map = {"Final Proj":"finalProj","Salary":"sal","Value":"__val__","DK Avg":"avg"}
-        if f_sort == "Value":
-            view["__val__"] = view["finalProj"] / (view["sal"]/1000).replace(0, float("nan"))
-        view = view.sort_values(sort_map[f_sort], ascending=False)
+df["proj_own"] = pd.to_numeric(df["proj_own"], errors="coerce")
 
-        st.caption(f"Showing {len(view)} of {len(df)} players")
+# 3) Compute leverage
+if proj_col in df.columns:
+    max_proj = df[proj_col].max()
 
-        rows = []
-        for _, p in view.iterrows():
-            val = round(p["finalProj"] / (p["sal"]/1000), 2) if p["sal"] > 0 else 0
-            sp_badge = ""
-            if p["isP"]:
-                sp_badge = "✅ SP" if p["spConfirmed"] else "⚠️ RP?"
-            rows.append({
-                "ID":      p["id"],
-                "Pos":     p["pos"],
-                "Name":    p["name"],
-                "Team":    p["team"],
-                "Opp":     p.get("opp","–"),
-                "Salary":  p["sal"],
-                "DK Avg":  round(p["avg"], 1),
-                "Final ▲": round(p.get("finalProj", p["avg"]), 1),
-                "Value":   val,
-                "SP":      sp_badge,
-                "Lock":    bool(p["locked"]),
-                "Exclude": bool(p["excluded"]),
-            })
-        pool_df = pd.DataFrame(rows)
+    def calc_leverage(row):
+        if pd.isna(row["proj_own"]) or row["proj_own"] <= 0 or pd.isna(row[proj_col]) or max_proj <= 0:
+            return pd.NA
+        return (row[proj_col] / max_proj) / (row["proj_own"] / 100.0)
 
-        edited = st.data_editor(
-            pool_df,
-            column_config={
-                "ID":      st.column_config.TextColumn("ID", width=80),
-                "Lock":    st.column_config.CheckboxColumn("🔒", width=50),
-                "Exclude": st.column_config.CheckboxColumn("🚫", width=50),
-                "Salary":  st.column_config.NumberColumn("Salary", format="$%d"),
-                "Final ▲": st.column_config.NumberColumn("Proj",   format="%.1f"),
-                "Value":   st.column_config.NumberColumn("Val",    format="%.2f"),
-            },
-            disabled=["ID","Pos","Name","Team","Opp","Salary","DK Avg","Final ▲","Value","SP"],
-            hide_index=True,
-            use_container_width=True,
-            height=500,
-            key="pool_editor"
-        )
+    df["leverage_score"] = df.apply(calc_leverage, axis=1)
+else:
+    df["leverage_score"] = pd.NA
 
-        if edited is not None:
-            id_to_lock = dict(zip(edited["ID"], edited["Lock"]))
-            id_to_excl = dict(zip(edited["ID"], edited["Exclude"]))
-            mask_l = st.session_state.players["id"].isin(id_to_lock)
-            mask_e = st.session_state.players["id"].isin(id_to_excl)
-            st.session_state.players.loc[mask_l, "locked"]   = st.session_state.players.loc[mask_l,"id"].map(id_to_lock)
-            st.session_state.players.loc[mask_e, "excluded"] = st.session_state.players.loc[mask_e,"id"].map(id_to_excl)
-            st.session_state.locks    = set(st.session_state.players[st.session_state.players["locked"]]["id"])
-            st.session_state.excludes = set(st.session_state.players[st.session_state.players["excluded"]]["id"])
+# 4) Display styled table
+show_cols = [
+    col
+    for col in [name_col, team_col, pos_col, "salary", proj_col, "proj_own", "leverage_score"]
+    if col in df.columns
+]
+
+styled = (
+    df[show_cols]
+    .style.format(
+        {
+            proj_col: "{:.1f}",
+            "proj_own": "{:.1f}",
+            "leverage_score": "{:.2f}",
+        }
+    )
+    .applymap(leverage_color, subset=["leverage_score"])
+)
+
+st.dataframe(styled, use_container_width=True)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TAB 3 — PROJECTIONS
