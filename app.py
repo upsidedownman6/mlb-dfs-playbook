@@ -748,7 +748,46 @@ with tab_slate:
                 )
                 wind_label = deg_to_label(w["wind_deg"]) if not is_dome else "—"
                 temp_color = "#58A6FF" if w["temp_f"]<55 else "#8B949E" if w["temp_f"]<68 else "#FF6D00" if w["temp_f"]<82 else "#FF1744"
+                                    st.caption(
+                        f"Hitting Env Score: {hit_score} · {hit_label}  |  "
+                        f"Away SP: {away_p_score} · {away_p_label}  |  "
+                        f"Home SP: {home_p_score} · {home_p_label}"
+                    )
+                # Environment scores
+                park_runs = PARK_FACTORS.get(norm_team(home), {"runs":100})["runs"] / 100.0
+                hit_score = compute_hitting_env_score(
+                    park_runs,
+                    w["temp_f"],
+                    w["wind_mph"],
+                    w["wind_deg"],
+                    is_dome,
+                    w["precip_pct"],
+                )
+                hit_tier, hit_label = tier_from_score(hit_score, for_pitcher=False)
 
+                # Pitcher spots (one per side, using opp implied totals)
+                away_opp_total = g["home_total"]
+                home_opp_total = g["away_total"]
+                away_p_score = compute_pitcher_env_score(
+                    park_runs,
+                    w["temp_f"],
+                    w["wind_mph"],
+                    w["wind_deg"],
+                    is_dome,
+                    w["precip_pct"],
+                    away_opp_total,
+                )
+                home_p_score = compute_pitcher_env_score(
+                    park_runs,
+                    w["temp_f"],
+                    w["wind_mph"],
+                    w["wind_deg"],
+                    is_dome,
+                    w["precip_pct"],
+                    home_opp_total,
+                )
+                away_p_tier, away_p_label = tier_from_score(away_p_score, for_pitcher=True)
+                home_p_tier, home_p_label = tier_from_score(home_p_score, for_pitcher=True)
                 with gcols[col_i]:
                     st.markdown(f"### {away} @ {home}")
                     st.caption(PARK_NAMES.get(norm_team(home), ""))
