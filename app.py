@@ -736,23 +736,28 @@ with tab_slate:
                 if coords and not is_dome:
                     w = fetch_weather(coords[0], coords[1], g.get("time",""))
                 elif is_dome:
-                    w = {"temp_f":72,"wind_mph":0,"wind_deg":0,"humidity":50,
-                         "precip_pct":0,"condition":"Dome 🏟️"}
+                    w = {
+                        "temp_f":72, "wind_mph":0, "wind_deg":0, "humidity":50,
+                        "precip_pct":0, "condition":"Dome 🏟️"
+                    }
                 else:
-                    w = {"temp_f":70,"wind_mph":5,"wind_deg":180,"humidity":50,
-                         "precip_pct":0,"condition":"Unknown"}
+                    w = {
+                        "temp_f":70, "wind_mph":5, "wind_deg":180, "humidity":50,
+                        "precip_pct":0, "condition":"Unknown"
+                    }
 
                 imp_type, imp_label = weather_impact(
                     w["temp_f"], w["wind_mph"], w["wind_deg"],
                     w["precip_pct"], is_dome
                 )
                 wind_label = deg_to_label(w["wind_deg"]) if not is_dome else "—"
-                temp_color = "#58A6FF" if w["temp_f"]<55 else "#8B949E" if w["temp_f"]<68 else "#FF6D00" if w["temp_f"]<82 else "#FF1744"
-               st.caption(
-                        f"Hitting Env Score: {hit_score} · {hit_label}  |  "
-                        f"Away SP: {away_p_score} · {away_p_label}  |  "
-                        f"Home SP: {home_p_score} · {home_p_label}"
-                    )
+                temp_color = (
+                    "#58A6FF" if w["temp_f"] < 55 else
+                    "#8B949E" if w["temp_f"] < 68 else
+                    "#FF6D00" if w["temp_f"] < 82 else
+                    "#FF1744"
+                )
+
                 # Environment scores
                 park_runs = PARK_FACTORS.get(norm_team(home), {"runs":100})["runs"] / 100.0
                 hit_score = compute_hitting_env_score(
@@ -788,6 +793,7 @@ with tab_slate:
                 )
                 away_p_tier, away_p_label = tier_from_score(away_p_score, for_pitcher=True)
                 home_p_tier, home_p_label = tier_from_score(home_p_score, for_pitcher=True)
+
                 with gcols[col_i]:
                     st.markdown(f"### {away} @ {home}")
                     st.caption(PARK_NAMES.get(norm_team(home), ""))
@@ -798,6 +804,12 @@ with tab_slate:
                         f"{w['humidity']}% RH  ·  {w['precip_pct']}% precip"
                     )
                     st.info(imp_label)
+
+                    st.caption(
+                        f"Hitting Env Score: {hit_score} · {hit_label}  |  "
+                        f"Away SP: {away_p_score} · {away_p_label}  |  "
+                        f"Home SP: {home_p_score} · {home_p_label}"
+                    )
 
                     vc1, vc2, vc3 = st.columns([2,1,2])
                     new_at = vc1.number_input(
@@ -817,18 +829,29 @@ with tab_slate:
 
                     pc1, pc2 = st.columns(2)
                     with pc1:
-                        ap = st.text_input(f"Away SP ({away})",
-                            value=g.get("away_pitcher","TBD"), key=f"ap_{g_idx}")
-                        ac = st.checkbox("✅ Confirmed", value=g.get("away_confirmed",False), key=f"ac_{g_idx}")
+                        ap = st.text_input(
+                            f"Away SP ({away})",
+                            value=g.get("away_pitcher","TBD"), key=f"ap_{g_idx}"
+                        )
+                        ac = st.checkbox(
+                            "✅ Confirmed",
+                            value=g.get("away_confirmed",False),
+                            key=f"ac_{g_idx}"
+                        )
                         st.session_state.games[g_idx]["away_pitcher"] = ap
                         st.session_state.games[g_idx]["away_confirmed"] = ac
                     with pc2:
-                        hp = st.text_input(f"Home SP ({home})",
-                            value=g.get("home_pitcher","TBD"), key=f"hp_{g_idx}")
-                        hc = st.checkbox("✅ Confirmed", value=g.get("home_confirmed",False), key=f"hc_{g_idx}")
+                        hp = st.text_input(
+                            f"Home SP ({home})",
+                            value=g.get("home_pitcher","TBD"), key=f"hp_{g_idx}"
+                        )
+                        hc = st.checkbox(
+                            "✅ Confirmed",
+                            value=g.get("home_confirmed",False),
+                            key=f"hc_{g_idx}"
+                        )
                         st.session_state.games[g_idx]["home_pitcher"] = hp
                         st.session_state.games[g_idx]["home_confirmed"] = hc
-                      # ─────────────────────────────────────────────────────────────────────────────
 # TAB 2 — PLAYER POOL
 # ─────────────────────────────────────────────────────────────────────────────
 with tab_pool:
