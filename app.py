@@ -946,6 +946,7 @@ with tab_slate:
                         )
                         st.session_state.games[g_idx]["home_pitcher"] = hp
                         st.session_state.games[g_idx]["home_confirmed"] = hc
+# ─────────────────────────────────────────────────────────────────────────────                        
 # TAB 2 — PLAYER POOL
 # ─────────────────────────────────────────────────────────────────────────────
 with tab_pool:
