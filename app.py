@@ -924,7 +924,7 @@ with tab_slate:
                 away_p_tier, away_p_label = tier_from_score(away_p_score, for_pitcher=True)
                 home_p_tier, home_p_label = tier_from_score(home_p_score, for_pitcher=True)
 
-                with gcols[col_i]:
+                               with gcols[col_i]:
                     st.markdown(f"### {away} @ {home}")
                     st.caption(PARK_NAMES.get(norm_team(home), ""))
 
@@ -941,6 +941,44 @@ with tab_slate:
                         f"Home SP: {home_p_score} · {home_p_label}"
                     )
 
+                    # Moneylines + Total → Implied Team Totals
+                    mlc1, mlc2, mlc3 = st.columns([1,1,1.2])
+                    away_ml = mlc1.number_input(
+                        f"{away} ML",
+                        value=float(g.get("away_ml", 0)),
+                        step=10.0,
+                        format="%0.0f",
+                        key=f"aml_{g_idx}"
+                    )
+                    home_ml = mlc2.number_input(
+                        f"{home} ML",
+                        value=float(g.get("home_ml", 0)),
+                        step=10.0,
+                        format="%0.0f",
+                        key=f"hml_{g_idx}"
+                    )
+                    game_total = mlc3.number_input(
+                        "Game Total (O/U)",
+                        value=float(g.get("ou", 8.5)),
+                        step=0.5,
+                        format="%0.1f",
+                        key=f"tot_{g_idx}"
+                    )
+
+                    st.session_state.games[g_idx]["away_ml"] = away_ml
+                    st.session_state.games[g_idx]["home_ml"] = home_ml
+                    st.session_state.games[g_idx]["ou"]      = game_total
+
+                    if away_ml != 0 and home_ml != 0 and game_total > 0:
+                        itt_away, itt_home = implied_totals_from_ml(game_total, home_ml, away_ml)
+                        if itt_away is not None and itt_home is not None:
+                            st.session_state.games[g_idx]["away_total"] = itt_away
+                            st.session_state.games[g_idx]["home_total"] = itt_home
+                            st.caption(
+                                f"Implied Totals (from ML & O/U): "
+                                f"{away} {itt_away} · {home} {itt_home}"
+                            )
+
                     vc1, vc2, vc3 = st.columns([2,1,2])
                     new_at = vc1.number_input(
                         f"{away} total",
@@ -956,32 +994,6 @@ with tab_slate:
                     )
                     st.session_state.games[g_idx]["away_total"] = new_at
                     st.session_state.games[g_idx]["home_total"] = new_ht
-
-                    pc1, pc2 = st.columns(2)
-                    with pc1:
-                        ap = st.text_input(
-                            f"Away SP ({away})",
-                            value=g.get("away_pitcher","TBD"), key=f"ap_{g_idx}"
-                        )
-                        ac = st.checkbox(
-                            "✅ Confirmed",
-                            value=g.get("away_confirmed",False),
-                            key=f"ac_{g_idx}"
-                        )
-                        st.session_state.games[g_idx]["away_pitcher"] = ap
-                        st.session_state.games[g_idx]["away_confirmed"] = ac
-                    with pc2:
-                        hp = st.text_input(
-                            f"Home SP ({home})",
-                            value=g.get("home_pitcher","TBD"), key=f"hp_{g_idx}"
-                        )
-                        hc = st.checkbox(
-                            "✅ Confirmed",
-                            value=g.get("home_confirmed",False),
-                            key=f"hc_{g_idx}"
-                        )
-                        st.session_state.games[g_idx]["home_pitcher"] = hp
-                        st.session_state.games[g_idx]["home_confirmed"] = hc
 # ─────────────────────────────────────────────────────────────────────────────                        
 # TAB 2 — PLAYER POOL
 # ─────────────────────────────────────────────────────────────────────────────
