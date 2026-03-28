@@ -310,7 +310,43 @@ def tier_from_score(score, for_pitcher=False):
         if score <= -1.5:
             return "cold",    "❄️ Cold for Bats"
         return "neutral",     "⚖️ Neutral Hitting Spot"
+# ─────────────────────────────────────────────────────────────────────────────
+# IMPLIED TEAM TOTALS FROM MONEYLINES + GAME TOTAL
+# ─────────────────────────────────────────────────────────────────────────────
 
+def moneyline_to_prob(ml):
+    """Convert American ML to implied win probability (no vig)."""
+    ml = float(ml)
+    if ml < 0:
+        return (-ml) / (-ml + 100.0)
+    else:
+        return 100.0 / (ml + 100.0)
+
+def implied_totals_from_ml(total_runs, home_ml, away_ml):
+    """
+    Approximate implied team totals from game total + home/away ML.
+    Uses normalized win probabilities to split the total. [web:297][web:299][web:304]
+    """
+    try:
+        total = float(total_runs)
+        h_ml = float(home_ml)
+        a_ml = float(away_ml)
+    except (TypeError, ValueError):
+        return None, None
+
+    p_home = moneyline_to_prob(h_ml)
+    p_away = moneyline_to_prob(a_ml)
+
+    s = p_home + p_away
+    if s <= 0:
+        return None, None
+    p_home /= s
+    p_away /= s
+
+    home_total = total * p_home
+    away_total = total * p_away
+
+    return round(away_total, 2), round(home_total, 2)
 # ─────────────────────────────────────────────────────────────────────────────
 # PROJECTION ENGINE
 # ─────────────────────────────────────────────────────────────────────────────
