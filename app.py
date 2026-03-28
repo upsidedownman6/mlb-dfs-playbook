@@ -949,6 +949,9 @@ with tab_slate:
 # ─────────────────────────────────────────────────────────────────────────────                        
 # TAB 2 — PLAYER POOL
 # ─────────────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
+# TAB 2 — PLAYER POOL
+# ─────────────────────────────────────────────────────────────────────────────
 with tab_pool:
     st.subheader("Player Pool")
 
@@ -960,18 +963,19 @@ with tab_pool:
     if uploaded:
         df_new = parse_dk_csv(uploaded.read())
         if not df_new.empty:
-             if not st.session_state.players.empty:
+            # Preserve existing locks/excludes/SP confirmations by ID
+            if not st.session_state.players.empty:
                 old = st.session_state.players.set_index("id")
                 df_new["locked"]      = df_new["id"].map(lambda i: old.loc[i,"locked"]   if i in old.index else False)
                 df_new["excluded"]    = df_new["id"].map(lambda i: old.loc[i,"excluded"] if i in old.index else False)
                 df_new["spConfirmed"] = df_new["id"].map(lambda i: old.loc[i,"spConfirmed"] if i in old.index else False)
             st.session_state.players = df_new
+            # Rebuild projections
             if st.session_state.games:
                 st.session_state.players = build_projections(st.session_state.players, st.session_state.games)
             else:
                 st.session_state.players["finalProj"] = st.session_state.players["avg"]
             st.success(f"Loaded {len(df_new)} players.")
-
     df = st.session_state.players
     if df.empty:
         st.info("Upload a DK CSV above to populate the player pool.")
