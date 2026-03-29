@@ -1504,7 +1504,7 @@ with tab_opt:
                 df = build_projections(df, st.session_state.games)
                 st.session_state.players = df
 
-        active = df[~df["excluded"]].copy()
+            active = df[~df["excluded"]].copy()
 
             if probable_only and st.session_state.get("games"):
                 # Build a set of (team, pitcher_name) for today’s probable SPs
