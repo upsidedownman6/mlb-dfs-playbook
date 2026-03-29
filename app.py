@@ -1007,109 +1007,128 @@ with tab_slate:
                     )
                     st.session_state.games[g_idx]["away_total"] = new_at
                     st.session_state.games[g_idx]["home_total"] = new_ht
-# ─────────────────────────────────────────────────────────────────────────────                        
-# TAB 2 — PLAYER POOL
-# ─────────────────────────────────────────────────────────────────────────────
 # ─────────────────────────────────────────────────────────────────────────────
 # TAB 2 — PLAYER POOL
 # ─────────────────────────────────────────────────────────────────────────────
-st.header("Player Pool")
 
-# Assume you already have player_pool built above this point
-# and that it includes a projection column, e.g. 'Proj_final'
+tab2 = tabs[1]
+with tab2:
+    st.header("Player Pool")
 
-# 1) Ownership upload
-st.subheader("Projected Ownership (optional)")
+    if "player_pool" not in st.session_state or st.session_state.player_pool is None:
+        st.info("Upload your DraftKings CSV and build the player pool first.")
+    else:
+        player_pool = st.session_state.player_pool
 
-own_file = st.file_uploader(
-    "Upload projected ownership CSV (RG, LineStar, etc.)",
-    type=["csv"],
-    key="own_upload",
-)
+        # 1) Ownership upload
+        st.subheader("Projected Ownership (optional)")
 
-if own_file is not None:
-    own_df = pd.read_csv(own_file)
-    # Try to normalize common column names
-    own_df = own_df.rename(
-        columns={
-            "Name": "player_name",
-            "Player": "player_name",
-            "Team": "team",
-            "Tm": "team",
-            "Pos": "position",
-            "Position": "position",
-            "Own": "proj_own",
-            "ProjOwn": "proj_own",
-            "Projected Ownership": "proj_own",
-        }
-    )
-    own_df = own_df[["player_name", "team", "position", "proj_own"]]
-else:
-    own_df = None
+        own_file = st.file_uploader(
+            "Upload projected ownership CSV (RG, LineStar, etc.)",
+            type=["csv"],
+            key="own_upload",
+        )
 
-# 2) Attach ownership to your player pool
-df = player_pool.copy()
+        if own_file is not None:
+            own_df = pd.read_csv(own_file)
+            # Normalize common column names from different sites
+            own_df = own_df.rename(
+                columns={
+                    "Name": "player_name",
+                    "Player": "player_name",
+                    "Team": "team",
+                    "Tm": "team",
+                    "Pos": "position",
+                    "Position": "position",
+                    "Own": "proj_own",
+                    "ProjOwn": "proj_own",
+                    "Projected Ownership": "proj_own",
+                }
+            )
+            own_df = own_df[["player_name", "team", "position", "proj_own"]]
+        else:
+            own_df = None
 
-# Adjust these three names if your columns are different:
-name_col = "player_name"   # e.g. "Name"
-team_col = "team"          # e.g. "TeamAbbrev"
-pos_col = "position"       # e.g. "Position"
-proj_col = "Proj_final"    # your final projection column
+        # 2) Attach ownership to your player pool
+        df = player_pool.copy()
 
-if own_df is not None:
-    df = df.merge(
-        own_df,
-        left_on=[name_col, team_col, pos_col],
-        right_on=["player_name", "team", "position"],
-        how="left",
-    )
-    df.drop(columns=["player_name_y", "team_y", "position_y"], errors="ignore", inplace=True)
-    df.rename(
-        columns={
-            "player_name_x": name_col,
-            "team_x": team_col,
-            "position_x": pos_col,
-        },
-        inplace=True,
-    )
-else:
-    df["proj_own"] = pd.NA
+        # Adjust these if your column names are different
+        name_col = "player_name"   # e.g. "Name"
+        team_col = "team"          # e.g. "TeamAbbrev"
+        pos_col = "position"       # e.g. "Position"
+        proj_col = "Proj_final"    # your final projection column
 
-df["proj_own"] = pd.to_numeric(df["proj_own"], errors="coerce")
+        if own_df is not None:
+            df = df.merge(
+                own_df,
+                left_on=[name_col, team_col, pos_col],
+                right_on=["player_name", "team", "position"],
+                how="left",
+            )
+            df.drop(
+                columns=["player_name_y", "team_y", "position_y"],
+                errors="ignore",
+                inplace=True,
+            )
+            df.rename(
+                columns={
+                    "player_name_x": name_col,
+                    "team_x": team_col,
+                    "position_x": pos_col,
+                },
+                inplace=True,
+            )
+        else:
+            df["proj_own"] = pd.NA
 
-# 3) Compute leverage
-if proj_col in df.columns:
-    max_proj = df[proj_col].max()
+        df["proj_own"] = pd.to_numeric(df["proj_own"], errors="coerce")
 
-    def calc_leverage(row):
-        if pd.isna(row["proj_own"]) or row["proj_own"] <= 0 or pd.isna(row[proj_col]) or max_proj <= 0:
-            return pd.NA
-        return (row[proj_col] / max_proj) / (row["proj_own"] / 100.0)
+        # 3) Compute leverage
+        if proj_col in df.columns:
+            max_proj = df[proj_col].max()
 
-    df["leverage_score"] = df.apply(calc_leverage, axis=1)
-else:
-    df["leverage_score"] = pd.NA
+            def calc_leverage(row):
+                if (
+                    pd.isna(row["proj_own"])
+                    or row["proj_own"] <= 0
+                    or pd.isna(row[proj_col])
+                    or max_proj <= 0
+                ):
+                    return pd.NA
+                return (row[proj_col] / max_proj) / (row["proj_own"] / 100.0)
 
-# 4) Display styled table
-show_cols = [
-    col
-    for col in [name_col, team_col, pos_col, "salary", proj_col, "proj_own", "leverage_score"]
-    if col in df.columns
-]
+            df["leverage_score"] = df.apply(calc_leverage, axis=1)
+        else:
+            df["leverage_score"] = pd.NA
 
-styled = (
-    df[show_cols]
-    .style.format(
-        {
-            proj_col: "{:.1f}",
-            "proj_own": "{:.1f}",
-            "leverage_score": "{:.2f}",
-        }
-    )
-    .applymap(leverage_color, subset=["leverage_score"])
-)
+        # 4) Display styled table
+        show_cols = [
+            col
+            for col in [
+                name_col,
+                team_col,
+                pos_col,
+                "salary",
+                proj_col,
+                "proj_own",
+                "leverage_score",
+            ]
+            if col in df.columns
+        ]
 
-st.dataframe(styled, use_container_width=True)
+        styled = (
+            df[show_cols]
+            .style.format(
+                {
+                    proj_col: "{:.1f}",
+                    "proj_own": "{:.1f}",
+                    "leverage_score": "{:.2f}",
+                }
+            )
+            .applymap(leverage_color, subset=["leverage_score"])
+        )
+
+        st.dataframe(styled, use_container_width=True)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TAB 3 — PROJECTIONS
