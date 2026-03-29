@@ -968,7 +968,46 @@ with tab_slate:
                     use_container_width=True,
                     height=min(220, 40 + 35*len(sp_df)),
                 )
+                    # ───────────── AI-STYLE SLATE ANALYSIS SUMMARY ─────────────
+        try:
+            top_hit = hit_df.iloc[0]
+            top_sp = sp_df.iloc[0]
 
+            lines = []
+
+            lines.append(
+                f"**Top offensive environment:** {top_hit['Game']} at "
+                f"{top_hit['Park']} stands out as the best hitting spot "
+                f"(env score {top_hit['Score']:.1f}, tagged {top_hit['Tag']})."
+            )
+
+            lines.append(
+                f"**Best run-prevention spot:** {top_sp['Team']} vs. {top_sp['Opp']} "
+                f"projects as the friendliest situation for starting pitching "
+                f"(env score {top_sp['Score']:.1f}, tagged {top_sp['Tag']})."
+            )
+
+            high_ceil = hit_df[hit_df["Tag"].isin(["Green", "Smash", "Premium"])].head(3)
+            if not high_ceil.empty:
+                games_list = ", ".join(high_ceil["Game"].tolist())
+                lines.append(
+                    f"**Ceiling offenses to prioritize:** {games_list} grade as "
+                    f"the best team-level hitting environments on this slate."
+                )
+
+            avoid_sp = sp_df[sp_df["Tag"].isin(["Red", "Attack"])]
+            if not avoid_sp.empty:
+                teams_list = ", ".join(avoid_sp["Team"].tolist())
+                lines.append(
+                    f"**Offenses to tread carefully with:** lineups facing "
+                    f"{teams_list} project in tougher run-prevention spots."
+                )
+
+            st.markdown("### Slate Analysis")
+            for ln in lines:
+                st.markdown(f"- {ln}")
+        except Exception:
+            pass
         # Now render individual game cards
         n_games = len(st.session_state.games)
         for row_i in range(0, n_games, 2):
