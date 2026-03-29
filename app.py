@@ -1163,9 +1163,10 @@ with tab_pool:
                     return c
             return None
 
-        name_col_src = find_col({"name", "player", "player name"})
-        team_col_src = find_col({"team", "tm", "teamabbr"})
-        pos_col_src = find_col({"pos", "position"})
+        # Use your DK-style headers for name/team/pos
+        name_col_src = find_col({"name", "name + id"})
+        team_col_src = find_col({"teamabbrev", "team", "team abbrev"})
+        pos_col_src = find_col({"position", "pos", "roster position"})
         own_col_src = find_col(
             {
                 "own",
@@ -1175,6 +1176,8 @@ with tab_pool:
                 "p_own",
                 "ownership",
                 "proj_own",
+                "own%",
+                "ownership%",
             }
         )
 
@@ -1189,8 +1192,8 @@ with tab_pool:
             )[["name", "team", "pos", "proj_own"]]
         else:
             st.warning(
-                "Could not automatically detect name/team/pos/ownership columns "
-                "in the uploaded ownership file. Proceeding without ownership."
+                "Ownership file loaded but no ownership column found. "
+                "Proceeding without ownership."
             )
             own_df = None
            # ---------- Base player pool ----------
