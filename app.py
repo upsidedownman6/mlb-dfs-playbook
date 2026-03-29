@@ -52,6 +52,38 @@ TEAM_COLORS = {
     "TOR": "#134A8E",
     "WSH": "#AB0003",
 }
+TEAM_LOGOS = {
+    "ARI": "https://a.espncdn.com/i/teamlogos/mlb/500/ari.png",
+    "ATL": "https://a.espncdn.com/i/teamlogos/mlb/500/atl.png",
+    "BAL": "https://a.espncdn.com/i/teamlogos/mlb/500/bal.png",
+    "BOS": "https://a.espncdn.com/i/teamlogos/mlb/500/bos.png",
+    "CHC": "https://a.espncdn.com/i/teamlogos/mlb/500/chc.png",
+    "CIN": "https://a.espncdn.com/i/teamlogos/mlb/500/cin.png",
+    "CLE": "https://a.espncdn.com/i/teamlogos/mlb/500/cle.png",
+    "COL": "https://a.espncdn.com/i/teamlogos/mlb/500/col.png",
+    "CWS": "https://a.espncdn.com/i/teamlogos/mlb/500/chw.png",
+    "DET": "https://a.espncdn.com/i/teamlogos/mlb/500/det.png",
+    "HOU": "https://a.espncdn.com/i/teamlogos/mlb/500/hou.png",
+    "KC":  "https://a.espncdn.com/i/teamlogos/mlb/500/kc.png",
+    "LAA": "https://a.espncdn.com/i/teamlogos/mlb/500/laa.png",
+    "LAD": "https://a.espncdn.com/i/teamlogos/mlb/500/lad.png",
+    "MIA": "https://a.espncdn.com/i/teamlogos/mlb/500/mia.png",
+    "MIL": "https://a.espncdn.com/i/teamlogos/mlb/500/mil.png",
+    "MIN": "https://a.espncdn.com/i/teamlogos/mlb/500/min.png",
+    "NYM": "https://a.espncdn.com/i/teamlogos/mlb/500/nym.png",
+    "NYY": "https://a.espncdn.com/i/teamlogos/mlb/500/nyy.png",
+    "OAK": "https://a.espncdn.com/i/teamlogos/mlb/500/oak.png",
+    "PHI": "https://a.espncdn.com/i/teamlogos/mlb/500/phi.png",
+    "PIT": "https://a.espncdn.com/i/teamlogos/mlb/500/pit.png",
+    "SD":  "https://a.espncdn.com/i/teamlogos/mlb/500/sd.png",
+    "SEA": "https://a.espncdn.com/i/teamlogos/mlb/500/sea.png",
+    "SF":  "https://a.espncdn.com/i/teamlogos/mlb/500/sf.png",
+    "STL": "https://a.espncdn.com/i/teamlogos/mlb/500/stl.png",
+    "TB":  "https://a.espncdn.com/i/teamlogos/mlb/500/tb.png",
+    "TEX": "https://a.espncdn.com/i/teamlogos/mlb/500/tex.png",
+    "TOR": "https://a.espncdn.com/i/teamlogos/mlb/500/tor.png",
+    "WSH": "https://a.espncdn.com/i/teamlogos/mlb/500/wsh.png",
+}
 def leverage_color(val):
     if pd.isna(val):
         return ""
@@ -968,10 +1000,31 @@ with tab_slate:
                 away_p_tier, away_p_label = tier_from_score(away_p_score, for_pitcher=True)
                 home_p_tier, home_p_label = tier_from_score(home_p_score, for_pitcher=True)
 
-                with gcols[col_i]:
-                    st.markdown(f"### {away} @ {home}")
-                    st.caption(PARK_NAMES.get(norm_team(home), ""))
+                home_abbr = norm_team(home)
+away_abbr = norm_team(away)
+hc = TEAM_COLORS.get(home_abbr, "#222222")
+ac = TEAM_COLORS.get(away_abbr, "#555555")
+home_logo = TEAM_LOGOS.get(home_abbr, "")
+away_logo = TEAM_LOGOS.get(away_abbr, "")
 
+st.markdown(
+    f"""
+    <div style="display:flex;justify-content:space-between;align-items:center;
+                padding:4px 8px;border-radius:6px;
+                background:linear-gradient(90deg,{ac} 0%,{hc} 100%);
+                color:white;font-weight:600;">
+        <div style="display:flex;align-items:center;gap:6px;">
+            <img src="{away_logo}" style="height:22px;border-radius:50%;background:white;padding:2px;">
+            <span>{away}</span>
+            <span style="margin:0 4px;">@</span>
+            <img src="{home_logo}" style="height:22px;border-radius:50%;background:white;padding:2px;">
+            <span>{home}</span>
+        </div>
+        <span style="font-size:12px;">{g.get('time','')}</span>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
                     st.markdown(
                         f"**{w['temp_f']:.0f}°F**  ·  {w['condition']}  ·  "
                         f"{w['wind_mph']:.0f} mph {wind_label}  ·  "
