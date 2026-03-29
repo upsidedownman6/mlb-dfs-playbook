@@ -17,9 +17,8 @@ from pulp import (
     LpProblem, LpMaximize, LpVariable, lpSum,
     LpBinary, LpStatus, value, PULP_CBC_CMD
 )
-import pandas as pd
-import streamlit as st
-# ... your other imports ...
+import logging
+
 TEAM_COLORS = {
     "ARI": "#A71930",
     "ATL": "#CE1141",
@@ -52,6 +51,7 @@ TEAM_COLORS = {
     "TOR": "#134A8E",
     "WSH": "#AB0003",
 }
+
 TEAM_LOGOS = {
     "ARI": "https://a.espncdn.com/i/teamlogos/mlb/500/ari.png",
     "ATL": "https://a.espncdn.com/i/teamlogos/mlb/500/atl.png",
@@ -84,6 +84,7 @@ TEAM_LOGOS = {
     "TOR": "https://a.espncdn.com/i/teamlogos/mlb/500/tor.png",
     "WSH": "https://a.espncdn.com/i/teamlogos/mlb/500/wsh.png",
 }
+
 def leverage_color(val):
     if pd.isna(val):
         return ""
@@ -94,6 +95,7 @@ def leverage_color(val):
     if val >= 0.7:
         return "background-color:#7D6608;color:white;"
     return "background-color:#922B21;color:white;"
+
 try:
     import statsapi
     STATSAPI_OK = True
@@ -107,7 +109,6 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-import logging
 logging.getLogger("pulp").setLevel(logging.CRITICAL)
 
 SALARY_CAP   = 50_000
@@ -173,6 +174,7 @@ DK_TEAM_MAP = {
 
 def norm_team(t):
     return DK_TEAM_MAP.get(str(t).upper().strip(), str(t).upper().strip())
+
 # ─────────────────────────────────────────────────────────────────────────────
 # SESSION STATE INIT
 # ─────────────────────────────────────────────────────────────────────────────
@@ -299,22 +301,20 @@ def deg_to_label(deg):
     dirs = ["N","NNE","NE","ENE","E","ESE","SE","SSE",
             "S","SSW","SW","WSW","W","WNW","NW","NNW"]
     return dirs[round(deg / 22.5) % 16]
-    # ─────────────────────────────────────────────────────────────────────────────
+
+# ─────────────────────────────────────────────────────────────────────────────
 # ENVIRONMENT SCORES (HITTING & PITCHING)
 # ─────────────────────────────────────────────────────────────────────────────
-
 def compute_hitting_env_score(park_runs, temp_f, wind_mph, wind_deg, is_dome, precip_pct):
     """Higher = better for hitters. 0 is neutral-ish."""
     if is_dome:
-        base = 0.5  # domes are usually slightly hitter neutral to friendly
+        base = 0.5
         park_term = (park_runs - 1.0) * 4.0
         return round(base + park_term, 2)
 
     score = 0.0
-    # Park runs: 0.0 at 1.00, about +/- 3 at extremes like COL / SEA
     score += (park_runs - 1.0) * 4.0
 
-    # Temperature: hot = good for bats
     if temp_f >= 85:
         score += 2.0
     elif temp_f >= 78:
@@ -326,22 +326,20 @@ def compute_hitting_env_score(park_runs, temp_f, wind_mph, wind_deg, is_dome, pr
     elif temp_f <= 55:
         score -= 1.0
 
-    # Wind
     norm = wind_deg % 360
-    if 315 <= norm or norm <= 45:  # blowing out
+    if 315 <= norm or norm <= 45:
         if wind_mph >= 18:
             score += 2.0
         elif wind_mph >= 10:
             score += 1.0
         elif wind_mph >= 6:
             score += 0.4
-    elif 135 <= norm <= 225:       # blowing in
+    elif 135 <= norm <= 225:
         if wind_mph >= 18:
             score -= 1.8
         elif wind_mph >= 10:
             score -= 1.0
 
-    # Rain: heavy rain knocks it down slightly
     if precip_pct >= 60:
         score -= 1.0
     elif precip_pct >= 40:
@@ -349,13 +347,11 @@ def compute_hitting_env_score(park_runs, temp_f, wind_mph, wind_deg, is_dome, pr
 
     return round(score, 2)
 
-
 def compute_pitcher_env_score(park_runs, temp_f, wind_mph, wind_deg, is_dome, precip_pct, opp_total):
     """Higher = better for pitchers (lower scoring environment + low opp total)."""
     hit_score = compute_hitting_env_score(park_runs, temp_f, wind_mph, wind_deg, is_dome, precip_pct)
-    score = -hit_score  # inverse of hitting environment
+    score = -hit_score
 
-    # Opponent implied total: biggest driver for SP
     if opp_total <= 3.0:
         score += 3.0
     elif opp_total <= 3.5:
@@ -366,7 +362,6 @@ def compute_pitcher_env_score(park_runs, temp_f, wind_mph, wind_deg, is_dome, pr
         score -= 1.0
 
     return round(score, 2)
-
 
 def tier_from_score(score, for_pitcher=False):
     """Return (tier, label) given an environment score."""
@@ -386,10 +381,10 @@ def tier_from_score(score, for_pitcher=False):
         if score <= -1.5:
             return "cold",    "❄️ Cold for Bats"
         return "neutral",     "⚖️ Neutral Hitting Spot"
+
 # ─────────────────────────────────────────────────────────────────────────────
 # IMPLIED TEAM TOTALS FROM MONEYLINES + GAME TOTAL
 # ─────────────────────────────────────────────────────────────────────────────
-
 def moneyline_to_prob(ml):
     """Convert American ML to implied win probability (no vig)."""
     ml = float(ml)
@@ -401,7 +396,6 @@ def moneyline_to_prob(ml):
 def implied_totals_from_ml(total_runs, home_ml, away_ml):
     """
     Approximate implied team totals from game total + home/away ML.
-    Uses normalized win probabilities to split the total. [web:297][web:299][web:304]
     """
     try:
         total = float(total_runs)
@@ -423,6 +417,7 @@ def implied_totals_from_ml(total_runs, home_ml, away_ml):
     away_total = total * p_away
 
     return round(away_total, 2), round(home_total, 2)
+
 # ─────────────────────────────────────────────────────────────────────────────
 # PROJECTION ENGINE
 # ─────────────────────────────────────────────────────────────────────────────
@@ -482,7 +477,6 @@ def build_projections(df, games_list):
         return df
     df = df.copy()
 
-    # Weather per home team
     weather_cache = {}
     for _, row in df.iterrows():
         home = row.get("home_team", row["team"])
@@ -516,14 +510,26 @@ def build_projections(df, games_list):
         df[col] = df["home_team"].map(lambda h: weather_cache.get(h, {}).get(col))
 
     df["park_f"]  = df.apply(lambda r: get_park_factor(r["home_team"]), axis=1)
-    df["wind_f"]  = df.apply(lambda r: get_wind_factor(r["wind_mph"] or 5, r["wind_deg"] or 180,
-                                                       r["is_dome"] or False, r["isP"]), axis=1)
-    df["temp_f_factor"] = df.apply(lambda r: get_temp_factor(r["temp_f"] or 70, r["isP"]), axis=1)
-    df["vegas_f"] = df.apply(lambda r: get_vegas_factor(r["team"], games_list, r["isP"]), axis=1)
+    df["wind_f"]  = df.apply(
+        lambda r: get_wind_factor(r["wind_mph"] or 5, r["wind_deg"] or 180,
+                                  r["is_dome"] or False, r["isP"]), axis=1
+    )
+    df["temp_f_factor"] = df.apply(
+        lambda r: get_temp_factor(r["temp_f"] or 70, r["isP"]), axis=1
+    )
+    df["vegas_f"] = df.apply(
+        lambda r: get_vegas_factor(r["team"], games_list, r["isP"]), axis=1
+    )
 
-    df["base"] = df.apply(lambda r: st.session_state.proj_edits.get(r["id"],{}).get("base", r["avg"]), axis=1)
-    df["bvp"]  = df.apply(lambda r: st.session_state.proj_edits.get(r["id"],{}).get("bvp",  0.0), axis=1)
-    df["form"] = df.apply(lambda r: st.session_state.proj_edits.get(r["id"],{}).get("form", 0.0), axis=1)
+    df["base"] = df.apply(
+        lambda r: st.session_state.proj_edits.get(r["id"],{}).get("base", r["avg"]), axis=1
+    )
+    df["bvp"]  = df.apply(
+        lambda r: st.session_state.proj_edits.get(r["id"],{}).get("bvp",  0.0), axis=1
+    )
+    df["form"] = df.apply(
+        lambda r: st.session_state.proj_edits.get(r["id"],{}).get("form", 0.0), axis=1
+    )
 
     df["finalProj"] = (df["base"] * df["park_f"] * df["wind_f"] *
                        df["temp_f_factor"] * df["vegas_f"] +
@@ -597,6 +603,7 @@ if dk_file is not None:
         st.success(f"Loaded {len(parsed)} players from DK CSV.")
     else:
         st.warning("CSV parsed but no valid players were found.")
+
 # ─────────────────────────────────────────────────────────────────────────────
 # LP OPTIMIZER
 # ─────────────────────────────────────────────────────────────────────────────
@@ -650,28 +657,22 @@ def solve_one_lineup(players, salary_cap, salary_floor,
 
     pid_map = {p["id"]: p for p in pool}
 
-    # Objective
     prob += lpSum(x[(pid, slot)] * pid_map[pid]["finalProj"]
                   for (pid, slot) in x)
 
-    # Each slot filled exactly once
     for slot in SLOTS:
         prob += lpSum(x[(pid, s)] for (pid, s) in x if s == slot) == 1
 
-    # Each player in at most one slot
     for pid in elig:
         prob += lpSum(x[(pid, s)] for s in elig[pid] if (pid, s) in x) <= 1
 
-    # Salary
     prob += lpSum(x[(pid, slot)] * pid_map[pid]["sal"] for (pid, slot) in x) <= salary_cap
     prob += lpSum(x[(pid, slot)] * pid_map[pid]["sal"] for (pid, slot) in x) >= salary_floor
 
-    # Locked
     for p in locked_in:
         if elig.get(p["id"]):
             prob += lpSum(x[(p["id"], s)] for s in elig[p["id"]] if (p["id"], s) in x) == 1
 
-    # Stack: at least stack_size hitters from one team
     hitter_teams = list({p["team"] for p in pool if not p["isP"]})
     if stack_size >= 2 and hitter_teams:
         team_stack = {t: LpVariable(f"ts_{t}", cat=LpBinary) for t in hitter_teams}
@@ -686,7 +687,6 @@ def solve_one_lineup(players, salary_cap, salary_floor,
             prob += t_count <= M * team_stack[t]
         prob += lpSum(team_stack[t] for t in hitter_teams) >= 1
 
-    # Max 8 from any team
     for t in {p["team"] for p in pool}:
         t_players = [p for p in pool if p["team"] == t]
         prob += lpSum(x[(p["id"], s)]
@@ -694,7 +694,6 @@ def solve_one_lineup(players, salary_cap, salary_floor,
                       for s in elig.get(p["id"], [])
                       if (p["id"], s) in x) <= 8
 
-    # Diversity vs previous lineups
     for prev in prev_lineups:
         prev_ids = {p["id"] for p in prev["players"]}
         prob += lpSum(x[(pid, slot)]
@@ -837,20 +836,6 @@ with tab_slate:
                 loaded = fetch_mlb_schedule(today_str)
             if loaded:
                 st.session_state.games = loaded
-
-                def get_probable_sp_ids(games):
-                    ids = set()
-                    for g in games:
-                        ap = g.get("away_probable_id")  # adjust these keys if needed
-                        hp = g.get("home_probable_id")
-                        if ap:
-                            ids.add(ap)
-                        if hp:
-                            ids.add(hp)
-                    return ids
-
-                st.session_state.probable_sp_ids = get_probable_sp_ids(loaded)
-
                 st.success(f"Loaded {len(loaded)} games.")
             else:
                 st.warning("No games found or MLB StatsAPI unavailable.")
@@ -868,7 +853,6 @@ with tab_slate:
     if not st.session_state.games:
         st.info("Click **Load Today's Games** to auto-populate the slate.")
     else:
-        # Build summary metrics for Top Hitting & Pitching spots
         summary_rows_hit = []
         summary_rows_sp  = []
 
@@ -908,7 +892,6 @@ with tab_slate:
                 "Tag": hit_label,
             })
 
-            # Pitcher env per side
             away_opp_total = g["home_total"]
             home_opp_total = g["away_total"]
 
@@ -946,7 +929,6 @@ with tab_slate:
                 "Tag":  home_p_label,
             })
 
-        # Sort and display top spots
         if summary_rows_hit:
             hit_df = pd.DataFrame(summary_rows_hit).sort_values("Score", ascending=False).head(5)
             sp_df  = pd.DataFrame(summary_rows_sp).sort_values("Score", ascending=False).head(5)
@@ -968,47 +950,48 @@ with tab_slate:
                     use_container_width=True,
                     height=min(220, 40 + 35*len(sp_df)),
                 )
-                    # ───────────── AI-STYLE SLATE ANALYSIS SUMMARY ─────────────
-        try:
-            top_hit = hit_df.iloc[0]
-            top_sp = sp_df.iloc[0]
 
-            lines = []
+            # AI-style slate analysis summary
+            try:
+                top_hit = hit_df.iloc[0]
+                top_sp = sp_df.iloc[0]
 
-            lines.append(
-                f"**Top offensive environment:** {top_hit['Game']} at "
-                f"{top_hit['Park']} stands out as the best hitting spot "
-                f"(env score {top_hit['Score']:.1f}, tagged {top_hit['Tag']})."
-            )
+                lines = []
 
-            lines.append(
-                f"**Best run-prevention spot:** {top_sp['Team']} vs. {top_sp['Opp']} "
-                f"projects as the friendliest situation for starting pitching "
-                f"(env score {top_sp['Score']:.1f}, tagged {top_sp['Tag']})."
-            )
-
-            high_ceil = hit_df[hit_df["Tag"].isin(["Green", "Smash", "Premium"])].head(3)
-            if not high_ceil.empty:
-                games_list = ", ".join(high_ceil["Game"].tolist())
                 lines.append(
-                    f"**Ceiling offenses to prioritize:** {games_list} grade as "
-                    f"the best team-level hitting environments on this slate."
+                    f"**Top offensive environment:** {top_hit['Game']} at "
+                    f"{top_hit['Park']} stands out as the best hitting spot "
+                    f"(env score {top_hit['Score']:.1f}, tagged {top_hit['Tag']})."
                 )
 
-            avoid_sp = sp_df[sp_df["Tag"].isin(["Red", "Attack"])]
-            if not avoid_sp.empty:
-                teams_list = ", ".join(avoid_sp["Team"].tolist())
                 lines.append(
-                    f"**Offenses to tread carefully with:** lineups facing "
-                    f"{teams_list} project in tougher run-prevention spots."
+                    f"**Best run-prevention spot:** {top_sp['Team']} vs. {top_sp['Opp']} "
+                    f"projects as the friendliest situation for starting pitching "
+                    f"(env score {top_sp['Score']:.1f}, tagged {top_sp['Tag']})."
                 )
 
-            st.markdown("### Slate Analysis")
-            for ln in lines:
-                st.markdown(f"- {ln}")
-        except Exception:
-            pass
-        # Now render individual game cards
+                high_ceil = hit_df[hit_df["Tag"].isin(["Green", "Smash", "Premium"])].head(3)
+                if not high_ceil.empty:
+                    games_list = ", ".join(high_ceil["Game"].tolist())
+                    lines.append(
+                        f"**Ceiling offenses to prioritize:** {games_list} grade as "
+                        f"the best team-level hitting environments on this slate."
+                    )
+
+                avoid_sp = sp_df[sp_df["Tag"].isin(["Red", "Attack"])]
+                if not avoid_sp.empty:
+                    teams_list = ", ".join(avoid_sp["Team"].tolist())
+                    lines.append(
+                        f"**Offenses to tread carefully with:** lineups facing "
+                        f"{teams_list} project in tougher run-prevention spots."
+                    )
+
+                st.markdown("### Slate Analysis")
+                for ln in lines:
+                    st.markdown(f"- {ln}")
+            except Exception:
+                pass
+
         n_games = len(st.session_state.games)
         for row_i in range(0, n_games, 2):
             gcols = st.columns(2)
@@ -1131,7 +1114,6 @@ with tab_slate:
                         f"Home SP: {home_p_score} · {home_p_label}"
                     )
 
-                    # Moneylines + Total → Implied Team Totals
                     mlc1, mlc2, mlc3 = st.columns([1, 1, 1.2])
                     away_ml = mlc1.number_input(
                         f"{away} ML",
@@ -1192,8 +1174,9 @@ with tab_slate:
                     )
                     st.session_state.games[g_idx]["away_total"] = new_at
                     st.session_state.games[g_idx]["home_total"] = new_ht
+
 # ─────────────────────────────────────────────────────────────────────────────
-# TAB 2 — PLAYER POOL (simple view only, using parse_dk_csv output)
+# TAB 2 — PLAYER POOL (simple view, using parse_dk_csv output)
 # ─────────────────────────────────────────────────────────────────────────────
 with tab_pool:
     st.header("Player Pool")
@@ -1201,13 +1184,11 @@ with tab_pool:
     if "players" not in st.session_state or st.session_state.players.empty:
         st.info("Upload your DraftKings CSV in the CSV Parser section first.")
     else:
-        df = st.session_state.players.copy()  # already pos/name/team/sal/avg
+        df = st.session_state.players.copy()
 
-        # Final projection may or may not exist yet; fall back to avg
         if "finalProj" not in df.columns:
             df["finalProj"] = df["avg"]
 
-        # Simple leverage based on projection only
         max_proj = df["finalProj"].max()
         if max_proj and max_proj > 0:
             df["leverage_score"] = df["finalProj"] / max_proj
@@ -1297,7 +1278,11 @@ with tab_proj:
         }
         sort_col = sort_col_map.get(pj_sort, "finalProj")
 
-        # If projection columns are missing, fall back to salary or avg
+        if pj_sort == "Value" and "finalProj" in view.columns and "sal" in view.columns:
+            view["__val2__"] = view["finalProj"] / (view["sal"] / 1000).replace(
+                0, float("nan")
+            )
+
         if sort_col not in view.columns:
             if "finalProj" in view.columns:
                 sort_col = "finalProj"
@@ -1308,13 +1293,7 @@ with tab_proj:
             elif "avg" in view.columns:
                 sort_col = "avg"
             else:
-                # No usable sort column; just skip sorting
                 sort_col = None
-
-        if pj_sort == "Value" and "finalProj" in view.columns and "sal" in view.columns:
-            view["__val2__"] = view["finalProj"] / (view["sal"] / 1000).replace(
-                0, float("nan")
-            )
 
         if sort_col is not None and sort_col in view.columns:
             view = view.sort_values(sort_col, ascending=False)
@@ -1507,29 +1486,29 @@ with tab_opt:
             active = df[~df["excluded"]].copy()
 
             if probable_only and st.session_state.get("games"):
-                # Build a set of (team, pitcher_name) for today’s probable SPs
                 probable_pairs = set()
                 for g in st.session_state.games:
-                    for side in ["away", "home"]:
-                        p_name = g.get(f"{side}_probable_sp")
-                        team   = g.get(side)
-                        if p_name and team:
-                            probable_pairs.add((norm_team(team), p_name.strip()))
+                    away_team = g.get("away")
+                    home_team = g.get("home")
+                    away_p    = g.get("away_pitcher")
+                    home_p    = g.get("home_pitcher")
+
+                    if away_team and away_p and away_p not in ("", "TBD"):
+                        probable_pairs.add((norm_team(away_team), away_p.strip()))
+                    if home_team and home_p and home_p not in ("", "TBD"):
+                        probable_pairs.add((norm_team(home_team), home_p.strip()))
 
                 if probable_pairs:
                     mask_p = active["isP"]
-                    # Keep only pitchers whose (team, name) is in probable_pairs
                     keep_p = active[mask_p].apply(
                         lambda r: (r["team"], r["name"].strip()) in probable_pairs,
                         axis=1,
                     )
                     active = pd.concat(
-                        [
-                            active[~mask_p],
-                            active[mask_p][keep_p],
-                        ],
+                        [active[~mask_p], active[mask_p][keep_p]],
                         axis=0,
                     )
+
             if len(active) < 10:
                 st.error("Not enough active players (need at least 10).")
             else:
@@ -1676,7 +1655,8 @@ with tab_lu:
             ]
             for j, slot in enumerate(ORDER):
                 p = slot_map.get(slot)
-                row[labels[j]] = f"{p['name']}" if p else "–"
+                row[labels[j]] = f"{p['name']}" if p else "–
+"
             row["Salary"] = f"${lu['sal']:,}"
             row["Proj"] = round(lu["proj"], 1)
             row["Stack"] = lu["stack"]
