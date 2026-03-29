@@ -1539,9 +1539,7 @@ with tab_lu:
                     slot_map[p["slot"]] = p
                 dk_row = {}
                 for i, slot in enumerate(ORDER):
-                    col = ["P", "P", "C", "1B", "2B", "3B", "SS", "OF", "OF", "OF"][
-                        i
-                    ]
+                    col = ["P", "P", "C", "1B", "2B", "3B", "SS", "OF", "OF", "OF"][i]
                     p = slot_map.get(slot)
                     dk_row[col if i < 2 else f"{col}_{i}"] = (
                         p["id"] if p else ""
@@ -1592,7 +1590,7 @@ with tab_lu:
             row["Stack"] = lu["stack"]
             display_rows.append(row)
 
-              st.dataframe(
+        st.dataframe(
             pd.DataFrame(display_rows),
             hide_index=True,
             use_container_width=True,
