@@ -1186,6 +1186,7 @@ with tab_pool:
     else:
         df = st.session_state.players.copy()
 
+        # Ensure finalProj exists
         if "finalProj" not in df.columns:
             df["finalProj"] = df["avg"]
 
@@ -1194,6 +1195,28 @@ with tab_pool:
             df["leverage_score"] = df["finalProj"] / max_proj
         else:
             df["leverage_score"] = pd.NA
+
+        # Lock / Exclude controls
+        c_lock, c_excl = st.columns(2)
+        with c_lock:
+            lock_names = st.multiselect(
+                "Lock players",
+                options=df["name"].tolist(),
+                default=df[df["id"].isin(st.session_state.locks)]["name"].tolist(),
+            )
+            # Update lock ids from names
+            st.session_state.locks = set(
+                df[df["name"].isin(lock_names)]["id"].tolist()
+            )
+        with c_excl:
+            excl_names = st.multiselect(
+                "Exclude players",
+                options=df["name"].tolist(),
+                default=df[df["id"].isin(st.session_state.excludes)]["name"].tolist(),
+            )
+            st.session_state.excludes = set(
+                df[df["name"].isin(excl_names)]["id"].tolist()
+            )
 
         show_cols = [
             col
@@ -1478,13 +1501,23 @@ with tab_opt:
             "⚡  Generate Lineups", type="primary", disabled=df.empty
         )
 
-        if gen_btn:
+       if gen_btn:
             if st.session_state.games:
                 df = build_projections(df, st.session_state.games)
                 st.session_state.players = df
 
             active = df[~df["excluded"]].copy()
 
+            # Team-level exclude (per run)
+            all_teams = sorted(active["team"].dropna().unique().tolist())
+            excl_teams = st.multiselect(
+                "Exclude teams from optimizer",
+                options=all_teams,
+                default=[],
+                key="opt_excl_teams",
+            )
+            if excl_teams:
+                active = active[~active["team"].isin(excl_teams)].copy()
             if probable_only and st.session_state.get("games"):
                 probable_pairs = set()
                 for g in st.session_state.games:
