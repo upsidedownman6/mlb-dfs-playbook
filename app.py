@@ -1162,7 +1162,6 @@ with tab_pool:
                     return c
             return None
 
-        # Try to detect columns from a variety of possible headers
         name_col_src = find_col({"name", "player", "player name"})
         team_col_src = find_col({"team", "tm", "teamabbr"})
         pos_col_src = find_col({"pos", "position"})
@@ -1189,11 +1188,11 @@ with tab_pool:
             )[["name", "team", "pos", "proj_own"]]
         else:
             st.warning(
-                "Could not automatically detect name/team/pos/ownership columns in the uploaded file. "
-                "Check the header row in your CSV or send me the column names so I can add them."
+                "Could not automatically detect name/team/pos/ownership columns "
+                "in the uploaded ownership file. Proceeding without ownership."
             )
-
-       # ---------- Base player pool ----------
+            own_df = None
+           # ---------- Base player pool ----------
     if "players" not in st.session_state or st.session_state.players.empty:
         st.info("Upload your DraftKings CSV first to see the player pool.")
     else:
