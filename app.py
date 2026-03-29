@@ -1501,7 +1501,7 @@ with tab_opt:
             "⚡  Generate Lineups", type="primary", disabled=df.empty
         )
 
-       if gen_btn:
+        if gen_btn:
             if st.session_state.games:
                 df = build_projections(df, st.session_state.games)
                 st.session_state.players = df
