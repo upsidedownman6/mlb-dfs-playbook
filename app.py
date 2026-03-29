@@ -817,24 +817,24 @@ with tab_slate:
             with st.spinner("Fetching MLB schedule…"):
                 loaded = fetch_mlb_schedule(today_str)
             if loaded:
-    st.session_state.games = loaded
+                st.session_state.games = loaded
 
-    def get_probable_sp_ids(games):
-        ids = set()
-        for g in games:
-            ap = g.get("away_probable_id")  # adjust these keys if needed
-            hp = g.get("home_probable_id")
-            if ap:
-                ids.add(ap)
-            if hp:
-                ids.add(hp)
-        return ids
+                def get_probable_sp_ids(games):
+                    ids = set()
+                    for g in games:
+                        ap = g.get("away_probable_id")  # adjust these keys if needed
+                        hp = g.get("home_probable_id")
+                        if ap:
+                            ids.add(ap)
+                        if hp:
+                            ids.add(hp)
+                    return ids
 
-    st.session_state.probable_sp_ids = get_probable_sp_ids(loaded)
+                st.session_state.probable_sp_ids = get_probable_sp_ids(loaded)
 
-    st.success(f"Loaded {len(loaded)} games.")
-else:
-    st.warning("No games found or MLB StatsAPI unavailable.")
+                st.success(f"Loaded {len(loaded)} games.")
+            else:
+                st.warning("No games found or MLB StatsAPI unavailable.")
 
     with col_date:
         override = st.date_input("Or pick a date", value=datetime.now().date(), label_visibility="collapsed")
