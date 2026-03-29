@@ -1010,13 +1010,15 @@ with tab_slate:
 # ─────────────────────────────────────────────────────────────────────────────
 # TAB 2 — PLAYER POOL
 # ─────────────────────────────────────────────────────────────────────────────
-with tab_player_pool:  # <- use whatever you called this tab in st.tabs(...)
+with tab_player_pool:
     st.header("Player Pool")
 
-    if "player_pool" not in st.session_state or st.session_state.player_pool is None:
+    if "players" not in st.session_state or st.session_state.players.empty:
         st.info("Upload your DraftKings CSV and build the player pool first.")
     else:
-        player_pool = st.session_state.player_pool
+        # In your app, st.session_state.players is the main pool
+        # If you also keep a separate 'player_pool', use that instead.
+        player_pool = st.session_state.players.copy()
 
         # 1) Ownership upload
         st.subheader("Projected Ownership (optional)")
@@ -1032,50 +1034,39 @@ with tab_player_pool:  # <- use whatever you called this tab in st.tabs(...)
             # Normalize common column names from different sites
             own_df = own_df.rename(
                 columns={
-                    "Name": "player_name",
-                    "Player": "player_name",
+                    "Name": "name",
+                    "Player": "name",
                     "Team": "team",
                     "Tm": "team",
-                    "Pos": "position",
-                    "Position": "position",
+                    "Pos": "pos",
+                    "Position": "pos",
                     "Own": "proj_own",
                     "ProjOwn": "proj_own",
                     "Projected Ownership": "proj_own",
                 }
             )
-            own_df = own_df[["player_name", "team", "position", "proj_own"]]
+            own_df = own_df[["name", "team", "pos", "proj_own"]]
         else:
             own_df = None
 
         # 2) Attach ownership to your player pool
         df = player_pool.copy()
 
-        # TODO: adjust these 4 names to match your columns
-        name_col = "player_name"   # e.g. "Name"
-        team_col = "team"          # e.g. "TeamAbbrev"
-        pos_col = "position"       # e.g. "Position"
-        proj_col = "Proj_final"    # your projection column
+        # These match your existing columns in st.session_state.players
+        name_col = "name"
+        team_col = "team"
+        pos_col = "pos"
+        proj_col = "finalProj"   # this is the final projection from your model
 
         if own_df is not None:
             df = df.merge(
                 own_df,
                 left_on=[name_col, team_col, pos_col],
-                right_on=["player_name", "team", "position"],
+                right_on=["name", "team", "pos"],
                 how="left",
             )
-            df.drop(
-                columns=["player_name_y", "team_y", "position_y"],
-                errors="ignore",
-                inplace=True,
-            )
-            df.rename(
-                columns={
-                    "player_name_x": name_col,
-                    "team_x": team_col,
-                    "position_x": pos_col,
-                },
-                inplace=True,
-            )
+            # After merge, we don't need the duplicate right-side key columns
+            # because they are the same names.
         else:
             df["proj_own"] = pd.NA
 
@@ -1093,6 +1084,7 @@ with tab_player_pool:  # <- use whatever you called this tab in st.tabs(...)
                     or max_proj <= 0
                 ):
                     return pd.NA
+                # leverage ~ projection strength relative to ownership
                 return (row[proj_col] / max_proj) / (row["proj_own"] / 100.0)
 
             df["leverage_score"] = df.apply(calc_leverage, axis=1)
@@ -1106,7 +1098,7 @@ with tab_player_pool:  # <- use whatever you called this tab in st.tabs(...)
                 name_col,
                 team_col,
                 pos_col,
-                "salary",
+                "sal",
                 proj_col,
                 "proj_own",
                 "leverage_score",
