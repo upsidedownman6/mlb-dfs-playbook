@@ -1135,67 +1135,41 @@ with tab_slate:
                     st.session_state.games[g_idx]["away_total"] = new_at
                     st.session_state.games[g_idx]["home_total"] = new_ht
 # ─────────────────────────────────────────────────────────────────────────────
-# TAB 2 — PLAYER POOL
+# TAB 2 — PLAYER POOL (simple view only)
 # ─────────────────────────────────────────────────────────────────────────────
 with tab_pool:
     st.header("Player Pool")
 
-    # ---------- Ownership upload (optional) ----------
-    st.subheader("Projected Ownership (optional)")
-    own_file = st.file_uploader(
-        "Upload projected ownership CSV (RG, LineStar, etc.)",
-        type=["csv"],
-        key="own_upload",
-    )
+    if "players" not in st.session_state or st.session_state.players.empty:
+        st.info("Upload your DraftKings CSV first to see the player pool.")
+    else:
+        df = st.session_state.players.copy()
 
-    own_df = None
-    if own_file is not None:
-        raw = pd.read_csv(own_file)
-        st.write("Ownership CSV columns:", list(raw.columns))
-
-        # Normalize column names for matching
-        col_map = {c: c.lower().strip() for c in raw.columns}
-
-        def find_col(candidates):
-            for c in raw.columns:
-                lc = col_map[c]
-                if lc in candidates:
-                    return c
-            return None
-
-        # Use your DK-style headers for name/team/pos
-        name_col_src = find_col({"name", "name + id"})
-        team_col_src = find_col({"teamabbrev", "team", "team abbrev"})
-        pos_col_src = find_col({"position", "pos", "roster position"})
-        own_col_src = find_col(
-            {
-                "own",
-                "projown",
-                "projected ownership",
-                "pown",
-                "p_own",
-                "ownership",
-                "proj_own",
-                "own%",
-                "ownership%",
+        # If your builder already renamed columns, skip this rename.
+        # If not, map DK headers to friendlier names:
+        df = df.rename(
+            columns={
+                "Name": "name",
+                "TeamAbbrev": "team",
+                "Position": "pos",
+                "Salary": "sal",
+                "AvgPointsPerGame": "finalProj",
             }
         )
 
-        if all([name_col_src, team_col_src, pos_col_src, own_col_src]):
-            own_df = raw.rename(
-                columns={
-                    name_col_src: "name",
-                    team_col_src: "team",
-                    pos_col_src: "pos",
-                    own_col_src: "proj_own",
-                }
-            )[["name", "team", "pos", "proj_own"]]
-        else:
-            st.warning(
-                "Ownership file loaded but no ownership column found. "
-                "Proceeding without ownership."
-            )
-            own_df = None
+        show_cols = [
+            col
+            for col in [
+                "name",
+                "team",
+                "pos",
+                "sal",
+                "finalProj",
+            ]
+            if col in df.columns
+        ]
+
+        st.dataframe(df[show_cols], use_container_width=True)
            # ---------- Base player pool ----------
     if "players" not in st.session_state or st.session_state.players.empty:
         st.info("Upload your DraftKings CSV first to see the player pool.")
