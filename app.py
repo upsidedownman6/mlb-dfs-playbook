@@ -1193,17 +1193,25 @@ with tab_pool:
                 "Check the header row in your CSV or send me the column names so I can add them."
             )
 
-    # ---------- Base player pool ----------
+       # ---------- Base player pool ----------
     if "players" not in st.session_state or st.session_state.players.empty:
         st.info("Upload your DraftKings CSV first to see the player pool.")
     else:
-        # These should match your DK player DataFrame columns
+        # Map DK columns to internal names
+        df = st.session_state.players.rename(
+            columns={
+                "Name": "name",
+                "TeamAbbrev": "team",
+                "Position": "pos",
+                "Salary": "sal",
+                "AvgPointsPerGame": "finalProj",
+            }
+        ).copy()
+
         name_col = "name"
         team_col = "team"
         pos_col = "pos"
         proj_col = "finalProj"
-
-        df = st.session_state.players.copy()
 
         # Join ownership if available
         if own_df is not None:
@@ -1215,10 +1223,8 @@ with tab_pool:
         else:
             df["proj_own"] = pd.NA
 
-        # Ensure proj_own is numeric
         df["proj_own"] = pd.to_numeric(df["proj_own"], errors="coerce")
 
-        # Compute leverage score if projection column exists
         if proj_col in df.columns:
             max_proj = df[proj_col].max()
 
@@ -1236,7 +1242,6 @@ with tab_pool:
         else:
             df["leverage_score"] = pd.NA
 
-        # Columns to show in the table (only include those that exist)
         show_cols = [
             col
             for col in [
@@ -1251,7 +1256,6 @@ with tab_pool:
             if col in df.columns
         ]
 
-        # Style leverage column if you already have a leverage_color function defined
         styled = (
             df[show_cols]
             .style.format(
