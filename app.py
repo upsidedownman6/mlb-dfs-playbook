@@ -1137,6 +1137,7 @@ with tab_slate:
 # ─────────────────────────────────────────────────────────────────────────────
 # TAB 2 — PLAYER POOL
 # ─────────────────────────────────────────────────────────────────────────────
+st.write("Player columns:", list(st.session_state.players.columns))
 with tab_pool:
     st.header("Player Pool")
 
