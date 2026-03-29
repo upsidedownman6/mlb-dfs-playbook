@@ -1383,33 +1383,18 @@ with tab_opt:
         st.divider()
         gen_btn = st.button("⚡  Generate Lineups", type="primary", disabled=df.empty)
 
-        if gen_btn:
+               if gen_btn:
             if st.session_state.games:
                 df = build_projections(df, st.session_state.games)
                 st.session_state.players = df
 
-                    active = df[~df["excluded"]].copy()
+            active = df[~df["excluded"]].copy()
 
-        if probable_only and st.session_state.get("probable_sp_ids"):
-            prob_ids = st.session_state.probable_sp_ids
-            mask_p = active["isP"]
-            active = active[~(mask_p & ~active["id"].isin(prob_ids))].copy()
+            if probable_only and st.session_state.get("probable_sp_ids"):
+                prob_ids = st.session_state.probable_sp_ids
+                mask_p = active["isP"]
+                active = active[~(mask_p & ~active["id"].isin(prob_ids))].copy()
 
-        if len(active) < 10:
-            st.error("Not enough active players (need at least 10).")
-        else:
-            with st.spinner("Optimizing…"):
-                lineups = generate_lineups(
-                    active,
-                    n_lineups    = n_lineups,
-                    stack_size   = stack_size,
-                    min_unique   = min_unique,
-                    salary_floor = salary_floor,
-                    locked_ids   = st.session_state.locks,
-                    excluded_ids = st.session_state.excludes,
-                    noise_sigma  = noise_sigma,
-                    game_stack   = game_stack,
-                )
             if len(active) < 10:
                 st.error("Not enough active players (need at least 10).")
             else:
@@ -1423,9 +1408,21 @@ with tab_opt:
                         locked_ids   = st.session_state.locks,
                         excluded_ids = st.session_state.excludes,
                         noise_sigma  = noise_sigma,
-                        game_stack   = game_stack
+                        game_stack   = game_stack,
                     )
-
+        else:
+            with st.spinner("Optimizing…"):
+                lineups = generate_lineups(
+                    active,
+                    n_lineups    = n_lineups,
+                    stack_size   = stack_size,
+                    min_unique   = min_unique,
+                    salary_floor = salary_floor,
+                    locked_ids   = st.session_state.locks,
+                    excluded_ids = st.session_state.excludes,
+                    noise_sigma  = noise_sigma,
+                    game_stack   = game_stack,
+                )
                 if max_exp < 100 and lineups:
                     from collections import Counter
                     exp_count = Counter()
