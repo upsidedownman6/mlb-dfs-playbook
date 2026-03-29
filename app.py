@@ -1137,9 +1137,10 @@ with tab_slate:
 # ─────────────────────────────────────────────────────────────────────────────
 # TAB 2 — PLAYER POOL
 # ─────────────────────────────────────────────────────────────────────────────
-swith tab_pool:
+   with tab_pool:
     st.header("Player Pool")
 
+    # ---------- Ownership upload (optional) ----------
     st.subheader("Projected Ownership (optional)")
     own_file = st.file_uploader(
         "Upload projected ownership CSV (RG, LineStar, etc.)",
@@ -1151,7 +1152,7 @@ swith tab_pool:
     if own_file is not None:
         raw = pd.read_csv(own_file)
 
-        # Create lowercased, stripped column names for matching
+        # Normalize column names for matching
         col_map = {c: c.lower().strip() for c in raw.columns}
 
         def find_col(candidates):
@@ -1161,39 +1162,50 @@ swith tab_pool:
                     return c
             return None
 
+        # Try to detect columns from a variety of possible headers
         name_col_src = find_col({"name", "player", "player name"})
         team_col_src = find_col({"team", "tm", "teamabbr"})
-        pos_col_src  = find_col({"pos", "position"})
-        own_col_src  = find_col({"own", "projown", "projected ownership", "pown", "p_own"})
+        pos_col_src = find_col({"pos", "position"})
+        own_col_src = find_col(
+            {
+                "own",
+                "projown",
+                "projected ownership",
+                "pown",
+                "p_own",
+                "ownership",
+                "proj_own",
+            }
+        )
 
         if all([name_col_src, team_col_src, pos_col_src, own_col_src]):
             own_df = raw.rename(
                 columns={
                     name_col_src: "name",
                     team_col_src: "team",
-                    pos_col_src:  "pos",
-                    own_col_src:  "proj_own",
+                    pos_col_src: "pos",
+                    own_col_src: "proj_own",
                 }
             )[["name", "team", "pos", "proj_own"]]
         else:
             st.warning(
                 "Could not automatically detect name/team/pos/ownership columns in the uploaded file. "
-                "Try a different ownership export or send me the column names."
+                "Check the header row in your CSV or send me the column names so I can add them."
             )
 
-    # Now the rest only runs if players exist
+    # ---------- Base player pool ----------
     if "players" not in st.session_state or st.session_state.players.empty:
         st.info("Upload your DraftKings CSV first to see the player pool.")
     else:
-        player_pool = st.session_state.players.copy()
-
+        # These should match your DK player DataFrame columns
         name_col = "name"
         team_col = "team"
-        pos_col  = "pos"
+        pos_col = "pos"
         proj_col = "finalProj"
 
-        df = player_pool.copy()
+        df = st.session_state.players.copy()
 
+        # Join ownership if available
         if own_df is not None:
             df = df.merge(
                 own_df,
@@ -1203,8 +1215,10 @@ swith tab_pool:
         else:
             df["proj_own"] = pd.NA
 
+        # Ensure proj_own is numeric
         df["proj_own"] = pd.to_numeric(df["proj_own"], errors="coerce")
 
+        # Compute leverage score if projection column exists
         if proj_col in df.columns:
             max_proj = df[proj_col].max()
 
@@ -1222,6 +1236,7 @@ swith tab_pool:
         else:
             df["leverage_score"] = pd.NA
 
+        # Columns to show in the table (only include those that exist)
         show_cols = [
             col
             for col in [
@@ -1236,6 +1251,7 @@ swith tab_pool:
             if col in df.columns
         ]
 
+        # Style leverage column if you already have a leverage_color function defined
         styled = (
             df[show_cols]
             .style.format(
