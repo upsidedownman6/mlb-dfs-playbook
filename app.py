@@ -940,7 +940,7 @@ with tab_slate:
         n_games = len(st.session_state.games)
         for row_i in range(0, n_games, 2):
             gcols = st.columns(2)
-            for col_i, g_idx in enumerate(range(row_i, min(row_i+2, n_games))):
+            for col_i, g_idx in enumerate(range(row_i, min(row_i + 2, n_games))):
                 g = st.session_state.games[g_idx]
                 home = g.get("home", "HOME")
                 away = g.get("away", "AWAY")
@@ -948,25 +948,38 @@ with tab_slate:
 
                 coords = STADIUM_COORDS.get(norm_team(home))
                 if coords and not is_dome:
-                    w = fetch_weather(coords[0], coords[1], g.get("time",""))
+                    w = fetch_weather(coords[0], coords[1], g.get("time", ""))
                 elif is_dome:
                     w = {
-                        "temp_f":72, "wind_mph":0, "wind_deg":0, "humidity":50,
-                        "precip_pct":0, "condition":"Dome 🏟️"
+                        "temp_f": 72,
+                        "wind_mph": 0,
+                        "wind_deg": 0,
+                        "humidity": 50,
+                        "precip_pct": 0,
+                        "condition": "Dome 🏟️",
                     }
                 else:
                     w = {
-                        "temp_f":70, "wind_mph":5, "wind_deg":180, "humidity":50,
-                        "precip_pct":0, "condition":"Unknown"
+                        "temp_f": 70,
+                        "wind_mph": 5,
+                        "wind_deg": 180,
+                        "humidity": 50,
+                        "precip_pct": 0,
+                        "condition": "Unknown",
                     }
 
                 imp_type, imp_label = weather_impact(
-                    w["temp_f"], w["wind_mph"], w["wind_deg"],
-                    w["precip_pct"], is_dome
+                    w["temp_f"],
+                    w["wind_mph"],
+                    w["wind_deg"],
+                    w["precip_pct"],
+                    is_dome,
                 )
                 wind_label = deg_to_label(w["wind_deg"]) if not is_dome else "—"
 
-                park_runs = PARK_FACTORS.get(norm_team(home), {"runs":100})["runs"] / 100.0
+                park_runs = (
+                    PARK_FACTORS.get(norm_team(home), {"runs": 100})["runs"] / 100.0
+                )
                 hit_score = compute_hitting_env_score(
                     park_runs,
                     w["temp_f"],
@@ -997,35 +1010,43 @@ with tab_slate:
                     w["precip_pct"],
                     home_opp_total,
                 )
-                away_p_tier, away_p_label = tier_from_score(away_p_score, for_pitcher=True)
-                home_p_tier, home_p_label = tier_from_score(home_p_score, for_pitcher=True)
+                away_p_tier, away_p_label = tier_from_score(
+                    away_p_score, for_pitcher=True
+                )
+                home_p_tier, home_p_label = tier_from_score(
+                    home_p_score, for_pitcher=True
+                )
 
-                home_abbr = norm_team(home)
-away_abbr = norm_team(away)
-hc = TEAM_COLORS.get(home_abbr, "#222222")
-ac = TEAM_COLORS.get(away_abbr, "#555555")
-home_logo = TEAM_LOGOS.get(home_abbr, "")
-away_logo = TEAM_LOGOS.get(away_abbr, "")
+                with gcols[col_i]:
+                    home_abbr = norm_team(home)
+                    away_abbr = norm_team(away)
+                    hc = TEAM_COLORS.get(home_abbr, "#222222")
+                    ac = TEAM_COLORS.get(away_abbr, "#555555")
+                    home_logo = TEAM_LOGOS.get(home_abbr, "")
+                    away_logo = TEAM_LOGOS.get(away_abbr, "")
 
-st.markdown(
-    f"""
-    <div style="display:flex;justify-content:space-between;align-items:center;
-                padding:4px 8px;border-radius:6px;
-                background:linear-gradient(90deg,{ac} 0%,{hc} 100%);
-                color:white;font-weight:600;">
-        <div style="display:flex;align-items:center;gap:6px;">
-            <img src="{away_logo}" style="height:22px;border-radius:50%;background:white;padding:2px;">
-            <span>{away}</span>
-            <span style="margin:0 4px;">@</span>
-            <img src="{home_logo}" style="height:22px;border-radius:50%;background:white;padding:2px;">
-            <span>{home}</span>
-        </div>
-        <span style="font-size:12px;">{g.get('time','')}</span>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-        st.markdown(
+                    st.markdown(
+                        f"""
+                        <div style="display:flex;justify-content:space-between;align-items:center;
+                                    padding:4px 8px;border-radius:6px;
+                                    background:linear-gradient(90deg,{ac} 0%,{hc} 100%);
+                                    color:white;font-weight:600;">
+                            <div style="display:flex;align-items:center;gap:6px;">
+                                <img src="{away_logo}" style="height:22px;border-radius:50%;background:white;padding:2px;">
+                                <span>{away}</span>
+                                <span style="margin:0 4px;">@</span>
+                                <img src="{home_logo}" style="height:22px;border-radius:50%;background:white;padding:2px;">
+                                <span>{home}</span>
+                            </div>
+                            <span style="font-size:12px;">{g.get('time','')}</span>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
+                    st.caption(PARK_NAMES.get(home_abbr, ""))
+
+                    st.markdown(
                         f"**{w['temp_f']:.0f}°F**  ·  {w['condition']}  ·  "
                         f"{w['wind_mph']:.0f} mph {wind_label}  ·  "
                         f"{w['humidity']}% RH  ·  {w['precip_pct']}% precip"
@@ -1039,35 +1060,37 @@ st.markdown(
                     )
 
                     # Moneylines + Total → Implied Team Totals
-                    mlc1, mlc2, mlc3 = st.columns([1,1,1.2])
+                    mlc1, mlc2, mlc3 = st.columns([1, 1, 1.2])
                     away_ml = mlc1.number_input(
                         f"{away} ML",
                         value=float(g.get("away_ml", 0)),
                         step=10.0,
                         format="%0.0f",
-                        key=f"aml_{g_idx}"
+                        key=f"aml_{g_idx}",
                     )
                     home_ml = mlc2.number_input(
                         f"{home} ML",
                         value=float(g.get("home_ml", 0)),
                         step=10.0,
                         format="%0.0f",
-                        key=f"hml_{g_idx}"
+                        key=f"hml_{g_idx}",
                     )
                     game_total = mlc3.number_input(
                         "Game Total (O/U)",
                         value=float(g.get("ou", 8.5)),
                         step=0.5,
                         format="%0.1f",
-                        key=f"tot_{g_idx}"
+                        key=f"tot_{g_idx}",
                     )
 
                     st.session_state.games[g_idx]["away_ml"] = away_ml
                     st.session_state.games[g_idx]["home_ml"] = home_ml
-                    st.session_state.games[g_idx]["ou"]      = game_total
+                    st.session_state.games[g_idx]["ou"] = game_total
 
                     if away_ml != 0 and home_ml != 0 and game_total > 0:
-                        itt_away, itt_home = implied_totals_from_ml(game_total, home_ml, away_ml)
+                        itt_away, itt_home = implied_totals_from_ml(
+                            game_total, home_ml, away_ml
+                        )
                         if itt_away is not None and itt_home is not None:
                             st.session_state.games[g_idx]["away_total"] = itt_away
                             st.session_state.games[g_idx]["home_total"] = itt_home
@@ -1076,18 +1099,24 @@ st.markdown(
                                 f"{away} {itt_away} · {home} {itt_home}"
                             )
 
-                    vc1, vc2, vc3 = st.columns([2,1,2])
+                    vc1, vc2, vc3 = st.columns([2, 1, 2])
                     new_at = vc1.number_input(
                         f"{away} total",
-                        min_value=0.0, max_value=15.0,
-                        value=float(g["away_total"]), step=0.25, key=f"at_{g_idx}"
+                        min_value=0.0,
+                        max_value=15.0,
+                        value=float(g["away_total"]),
+                        step=0.25,
+                        key=f"at_{g_idx}",
                     )
                     vc2.write("")
                     vc2.write(f"**O/U {g['ou']}**")
                     new_ht = vc3.number_input(
                         f"{home} total",
-                        min_value=0.0, max_value=15.0,
-                        value=float(g["home_total"]), step=0.25, key=f"ht_{g_idx}"
+                        min_value=0.0,
+                        max_value=15.0,
+                        value=float(g["home_total"]),
+                        step=0.25,
+                        key=f"ht_{g_idx}",
                     )
                     st.session_state.games[g_idx]["away_total"] = new_at
                     st.session_state.games[g_idx]["home_total"] = new_ht
