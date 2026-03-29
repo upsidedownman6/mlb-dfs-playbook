@@ -1137,11 +1137,9 @@ with tab_slate:
 # ─────────────────────────────────────────────────────────────────────────────
 # TAB 2 — PLAYER POOL
 # ─────────────────────────────────────────────────────────────────────────────
-st.write("Player columns:", list(st.session_state.players.columns))
-with tab_pool:
+swith tab_pool:
     st.header("Player Pool")
 
-    # 1) Ownership upload is always visible
     st.subheader("Projected Ownership (optional)")
     own_file = st.file_uploader(
         "Upload projected ownership CSV (RG, LineStar, etc.)",
@@ -1149,26 +1147,41 @@ with tab_pool:
         key="own_upload",
     )
 
+    own_df = None
     if own_file is not None:
-        own_df = pd.read_csv(own_file)
-        own_df = own_df.rename(
-            columns={
-                "Name": "name",
-                "Player": "name",
-                "Team": "team",
-                "Tm": "team",
-                "Pos": "pos",
-                "Position": "pos",
-                "Own": "proj_own",
-                "ProjOwn": "proj_own",
-                "Projected Ownership": "proj_own",
-            }
-        )
-        own_df = own_df[["name", "team", "pos", "proj_own"]]
-    else:
-        own_df = None
+        raw = pd.read_csv(own_file)
 
-    # 2) Only show the pool/table if players are loaded
+        # Create lowercased, stripped column names for matching
+        col_map = {c: c.lower().strip() for c in raw.columns}
+
+        def find_col(candidates):
+            for c in raw.columns:
+                lc = col_map[c]
+                if lc in candidates:
+                    return c
+            return None
+
+        name_col_src = find_col({"name", "player", "player name"})
+        team_col_src = find_col({"team", "tm", "teamabbr"})
+        pos_col_src  = find_col({"pos", "position"})
+        own_col_src  = find_col({"own", "projown", "projected ownership", "pown", "p_own"})
+
+        if all([name_col_src, team_col_src, pos_col_src, own_col_src]):
+            own_df = raw.rename(
+                columns={
+                    name_col_src: "name",
+                    team_col_src: "team",
+                    pos_col_src:  "pos",
+                    own_col_src:  "proj_own",
+                }
+            )[["name", "team", "pos", "proj_own"]]
+        else:
+            st.warning(
+                "Could not automatically detect name/team/pos/ownership columns in the uploaded file. "
+                "Try a different ownership export or send me the column names."
+            )
+
+    # Now the rest only runs if players exist
     if "players" not in st.session_state or st.session_state.players.empty:
         st.info("Upload your DraftKings CSV first to see the player pool.")
     else:
