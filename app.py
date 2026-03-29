@@ -1655,8 +1655,8 @@ with tab_lu:
             ]
             for j, slot in enumerate(ORDER):
                 p = slot_map.get(slot)
-                row[labels[j]] = f"{p['name']}" if p else "–
-"
+                row[labels[j]] = f"{p['name']}" if p else "–"
+                
             row["Salary"] = f"${lu['sal']:,}"
             row["Proj"] = round(lu["proj"], 1)
             row["Stack"] = lu["stack"]
