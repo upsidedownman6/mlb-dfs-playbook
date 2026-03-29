@@ -1592,12 +1592,9 @@ with tab_lu:
             row["Stack"] = lu["stack"]
             display_rows.append(row)
 
-        st.dataframe(
+              st.dataframe(
             pd.DataFrame(display_rows),
             hide_index=True,
             use_container_width=True,
-            height=600,
-        )
-        use_container_width=True,
             height=600,
         )
