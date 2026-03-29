@@ -817,10 +817,24 @@ with tab_slate:
             with st.spinner("Fetching MLB schedule…"):
                 loaded = fetch_mlb_schedule(today_str)
             if loaded:
-                st.session_state.games = loaded
-                st.success(f"Loaded {len(loaded)} games.")
-            else:
-                st.warning("No games found or MLB StatsAPI unavailable.")
+    st.session_state.games = loaded
+
+    def get_probable_sp_ids(games):
+        ids = set()
+        for g in games:
+            ap = g.get("away_probable_id")  # adjust these keys if needed
+            hp = g.get("home_probable_id")
+            if ap:
+                ids.add(ap)
+            if hp:
+                ids.add(hp)
+        return ids
+
+    st.session_state.probable_sp_ids = get_probable_sp_ids(loaded)
+
+    st.success(f"Loaded {len(loaded)} games.")
+else:
+    st.warning("No games found or MLB StatsAPI unavailable.")
 
     with col_date:
         override = st.date_input("Or pick a date", value=datetime.now().date(), label_visibility="collapsed")
@@ -1340,6 +1354,7 @@ with tab_opt:
 
         with oc2:
             st.markdown("**Constraints**")
+            probable_only = st.checkbox("Use only probable SPs", value=True)
             game_stack   = st.checkbox("Game Stack (SP + Opp Hitters)", value=False)
             noise_level  = st.select_slider("Projection Noise", options=["None","Low","Medium","High"], value="Low")
             noise_map    = {"None":0.0, "Low":0.4, "Medium":1.2, "High":2.5}
@@ -1373,7 +1388,28 @@ with tab_opt:
                 df = build_projections(df, st.session_state.games)
                 st.session_state.players = df
 
-            active = df[~df["excluded"]].copy()
+                    active = df[~df["excluded"]].copy()
+
+        if probable_only and st.session_state.get("probable_sp_ids"):
+            prob_ids = st.session_state.probable_sp_ids
+            mask_p = active["isP"]
+            active = active[~(mask_p & ~active["id"].isin(prob_ids))].copy()
+
+        if len(active) < 10:
+            st.error("Not enough active players (need at least 10).")
+        else:
+            with st.spinner("Optimizing…"):
+                lineups = generate_lineups(
+                    active,
+                    n_lineups    = n_lineups,
+                    stack_size   = stack_size,
+                    min_unique   = min_unique,
+                    salary_floor = salary_floor,
+                    locked_ids   = st.session_state.locks,
+                    excluded_ids = st.session_state.excludes,
+                    noise_sigma  = noise_sigma,
+                    game_stack   = game_stack,
+                )
             if len(active) < 10:
                 st.error("Not enough active players (need at least 10).")
             else:
