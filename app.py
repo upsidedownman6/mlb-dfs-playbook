@@ -1598,6 +1598,6 @@ with tab_lu:
             use_container_width=True,
             height=600,
         )
-            use_container_width=True,
+        use_container_width=True,
             height=600,
         )
