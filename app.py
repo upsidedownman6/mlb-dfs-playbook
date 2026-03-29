@@ -1025,7 +1025,7 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-                    st.markdown(
+        st.markdown(
                         f"**{w['temp_f']:.0f}°F**  ·  {w['condition']}  ·  "
                         f"{w['wind_mph']:.0f} mph {wind_label}  ·  "
                         f"{w['humidity']}% RH  ·  {w['precip_pct']}% precip"
