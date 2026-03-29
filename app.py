@@ -1135,7 +1135,7 @@ with tab_slate:
                     st.session_state.games[g_idx]["away_total"] = new_at
                     st.session_state.games[g_idx]["home_total"] = new_ht
 # ─────────────────────────────────────────────────────────────────────────────
-# TAB 2 — PLAYER POOL (simple view only)
+# TAB 2 — PLAYER POOL (simple view only, no ownership)
 # ─────────────────────────────────────────────────────────────────────────────
 with tab_pool:
     st.header("Player Pool")
@@ -1145,8 +1145,7 @@ with tab_pool:
     else:
         df = st.session_state.players.copy()
 
-        # If your builder already renamed columns, skip this rename.
-        # If not, map DK headers to friendlier names:
+        # Map DK headers to internal names if not already done upstream
         df = df.rename(
             columns={
                 "Name": "name",
@@ -1157,63 +1156,14 @@ with tab_pool:
             }
         )
 
-        show_cols = [
-            col
-            for col in [
-                "name",
-                "team",
-                "pos",
-                "sal",
-                "finalProj",
-            ]
-            if col in df.columns
-        ]
-
-        st.dataframe(df[show_cols], use_container_width=True)
-           # ---------- Base player pool ----------
-    if "players" not in st.session_state or st.session_state.players.empty:
-        st.info("Upload your DraftKings CSV first to see the player pool.")
-    else:
-        # Map DK columns to internal names
-        df = st.session_state.players.rename(
-            columns={
-                "Name": "name",
-                "TeamAbbrev": "team",
-                "Position": "pos",
-                "Salary": "sal",
-                "AvgPointsPerGame": "finalProj",
-            }
-        ).copy()
-
-        name_col = "name"
-        team_col = "team"
-        pos_col = "pos"
-        proj_col = "finalProj"
-
-        # Join ownership if available
-        if own_df is not None:
-            df = df.merge(
-                own_df,
-                on=["name", "team", "pos"],
-                how="left",
-            )
-        else:
-            df["proj_own"] = pd.NA
-
-        df["proj_own"] = pd.to_numeric(df["proj_own"], errors="coerce")
-
-        if proj_col in df.columns:
-            max_proj = df[proj_col].max()
+        # Optional: simple leverage metric based only on projection
+        if "finalProj" in df.columns:
+            max_proj = df["finalProj"].max()
 
             def calc_leverage(row):
-                if (
-                    pd.isna(row["proj_own"])
-                    or row["proj_own"] <= 0
-                    or pd.isna(row[proj_col])
-                    or max_proj <= 0
-                ):
+                if pd.isna(row["finalProj"]) or max_proj <= 0:
                     return pd.NA
-                return (row[proj_col] / max_proj) / (row["proj_own"] / 100.0)
+                return row["finalProj"] / max_proj
 
             df["leverage_score"] = df.apply(calc_leverage, axis=1)
         else:
@@ -1222,30 +1172,32 @@ with tab_pool:
         show_cols = [
             col
             for col in [
-                name_col,
-                team_col,
-                pos_col,
+                "name",
+                "team",
+                "pos",
                 "sal",
-                proj_col,
-                "proj_own",
+                "finalProj",
                 "leverage_score",
             ]
             if col in df.columns
         ]
 
-        styled = (
-            df[show_cols]
-            .style.format(
-                {
-                    proj_col: "{:.1f}",
-                    "proj_own": "{:.1f}",
-                    "leverage_score": "{:.2f}",
-                }
+        # If you have leverage_color defined, you can style; otherwise just show dataframe
+        try:
+            styled = (
+                df[show_cols]
+                .style.format(
+                    {
+                        "finalProj": "{:.1f}",
+                        "leverage_score": "{:.2f}",
+                    }
+                )
+                .applymap(leverage_color, subset=["leverage_score"])
             )
-            .applymap(leverage_color, subset=["leverage_score"])
-        )
+            st.dataframe(styled, use_container_width=True)
+        except Exception:
+            st.dataframe(df[show_cols], use_container_width=True)
 
-        st.dataframe(styled, use_container_width=True)
 # ─────────────────────────────────────────────────────────────────────────────
 # TAB 3 — PROJECTIONS
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1261,63 +1213,100 @@ with tab_proj:
             df = build_projections(df, st.session_state.games)
             st.session_state.players = df
 
-        rc1, rc2, rc3 = st.columns([1,1,3])
-        pj_pos  = rc1.selectbox("Filter Position", ["All"] + sorted(df["pos"].dropna().unique().tolist()), key="pj_pos")
-        pj_team = rc2.selectbox("Filter Team",     ["All"] + sorted(df["team"].dropna().unique().tolist()), key="pj_team")
-        pj_sort = rc3.selectbox("Sort", ["Final Proj","Base","Salary","Value"], key="pj_sort")
+        rc1, rc2, rc3 = st.columns([1, 1, 3])
+        pj_pos = rc1.selectbox(
+            "Filter Position",
+            ["All"] + sorted(df["pos"].dropna().unique().tolist()),
+            key="pj_pos",
+        )
+        pj_team = rc2.selectbox(
+            "Filter Team",
+            ["All"] + sorted(df["team"].dropna().unique().tolist()),
+            key="pj_team",
+        )
+        pj_sort = rc3.selectbox(
+            "Sort",
+            ["Final Proj", "Base", "Salary", "Value"],
+            key="pj_sort",
+        )
 
         if st.button("↺ Recalculate"):
             if st.session_state.games:
-                st.session_state.players = build_projections(df, st.session_state.games)
+                st.session_state.players = build_projections(
+                    df, st.session_state.games
+                )
             st.rerun()
 
         view = df.copy()
-        if pj_pos  != "All": view = view[view["pos"] == pj_pos]
-        if pj_team != "All": view = view[view["team"] == pj_team]
+        if pj_pos != "All":
+            view = view[view["pos"] == pj_pos]
+        if pj_team != "All":
+            view = view[view["team"] == pj_team]
 
-        sort_col = {"Final Proj":"finalProj","Base":"base","Salary":"sal","Value":"__val2__"}.get(pj_sort,"finalProj")
+        sort_col = {
+            "Final Proj": "finalProj",
+            "Base": "base",
+            "Salary": "sal",
+            "Value": "__val2__",
+        }.get(pj_sort, "finalProj")
+
         if pj_sort == "Value":
-            view["__val2__"] = view["finalProj"] / (view["sal"]/1000).replace(0, float("nan"))
+            view["__val2__"] = view["finalProj"] / (view["sal"] / 1000).replace(
+                0, float("nan")
+            )
         view = view.sort_values(sort_col, ascending=False)
 
         proj_rows = []
         for _, p in view.iterrows():
             edits = st.session_state.proj_edits.get(p["id"], {})
-            proj_rows.append({
-                "ID":      p["id"],
-                "Pos":     p["pos"],
-                "Name":    p["name"],
-                "Team":    p["team"],
-                "Salary":  p["sal"],
-                "Base":    round(edits.get("base", p["avg"]), 2),
-                "Park F":  round(p.get("park_f",1.0), 3),
-                "Wind F":  round(p.get("wind_f",1.0), 3),
-                "Temp F":  round(p.get("temp_f_factor",1.0), 3),
-                "Vegas F": round(p.get("vegas_f",1.0), 3),
-                "BvP":     round(edits.get("bvp", 0.0), 2),
-                "Form":    round(edits.get("form",0.0), 2),
-                "Final ▲": round(p.get("finalProj", p["avg"]), 2),
-            })
+            proj_rows.append(
+                {
+                    "ID": p["id"],
+                    "Pos": p["pos"],
+                    "Name": p["name"],
+                    "Team": p["team"],
+                    "Salary": p["sal"],
+                    "Base": round(edits.get("base", p["avg"]), 2),
+                    "Park F": round(p.get("park_f", 1.0), 3),
+                    "Wind F": round(p.get("wind_f", 1.0), 3),
+                    "Temp F": round(p.get("temp_f_factor", 1.0), 3),
+                    "Vegas F": round(p.get("vegas_f", 1.0), 3),
+                    "BvP": round(edits.get("bvp", 0.0), 2),
+                    "Form": round(edits.get("form", 0.0), 2),
+                    "Final ▲": round(p.get("finalProj", p["avg"]), 2),
+                }
+            )
         proj_df = pd.DataFrame(proj_rows)
 
         edited_proj = st.data_editor(
             proj_df,
             column_config={
-                "Base":    st.column_config.NumberColumn("Base",   format="%.1f"),
-                "BvP":     st.column_config.NumberColumn("BvP Δ", format="%.1f"),
-                "Form":    st.column_config.NumberColumn("Form Δ",format="%.1f"),
-                "Salary":  st.column_config.NumberColumn("Salary", format="$%d"),
-                "Park F":  st.column_config.NumberColumn("Park",   format="%.3f"),
-                "Wind F":  st.column_config.NumberColumn("Wind",   format="%.3f"),
-                "Temp F":  st.column_config.NumberColumn("Temp",   format="%.3f"),
-                "Vegas F": st.column_config.NumberColumn("Vegas",  format="%.3f"),
-                "Final ▲": st.column_config.NumberColumn("Proj",   format="%.2f"),
+                "Base": st.column_config.NumberColumn("Base", format="%.1f"),
+                "BvP": st.column_config.NumberColumn("BvP Δ", format="%.1f"),
+                "Form": st.column_config.NumberColumn("Form Δ", format="%.1f"),
+                "Salary": st.column_config.NumberColumn("Salary", format="$%d"),
+                "Park F": st.column_config.NumberColumn("Park", format="%.3f"),
+                "Wind F": st.column_config.NumberColumn("Wind", format="%.3f"),
+                "Temp F": st.column_config.NumberColumn("Temp", format="%.3f"),
+                "Vegas F": st.column_config.NumberColumn("Vegas", format="%.3f"),
+                "Final ▲": st.column_config.NumberColumn("Proj", format="%.2f"),
             },
-            disabled=["ID","Pos","Name","Team","Salary","Park F","Wind F","Temp F","Vegas F","Final ▲"],
+            disabled=[
+                "ID",
+                "Pos",
+                "Name",
+                "Team",
+                "Salary",
+                "Park F",
+                "Wind F",
+                "Temp F",
+                "Vegas F",
+                "Final ▲",
+            ],
             hide_index=True,
             use_container_width=True,
             height=520,
-            key="proj_editor"
+            key="proj_editor",
         )
 
         if edited_proj is not None:
@@ -1325,12 +1314,18 @@ with tab_proj:
             for _, row in edited_proj.iterrows():
                 pid = row["ID"]
                 existing = st.session_state.proj_edits.get(pid, {})
-                new_edit = {"base": float(row["Base"]), "bvp": float(row["BvP"]), "form": float(row["Form"])}
+                new_edit = {
+                    "base": float(row["Base"]),
+                    "bvp": float(row["BvP"]),
+                    "form": float(row["Form"]),
+                }
                 if new_edit != existing:
                     st.session_state.proj_edits[pid] = new_edit
                     changed = True
             if changed:
-                st.session_state.players = build_projections(st.session_state.players, st.session_state.games)
+                st.session_state.players = build_projections(
+                    st.session_state.players, st.session_state.games
+                )
                 st.rerun()
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1347,41 +1342,99 @@ with tab_opt:
 
         with oc1:
             st.markdown("**Lineup Generation**")
-            n_lineups    = st.number_input("Number of Lineups", min_value=1, max_value=150, value=20, step=1)
-            stack_size   = st.selectbox("Stack Size (hitters)", [4, 3, 5, 2, 1], index=0)
-            min_unique   = st.number_input("Min Unique Players/Lineup", min_value=0, max_value=9, value=3, step=1)
-            salary_floor = st.number_input("Salary Floor ($)", min_value=40000, max_value=50000, value=49000, step=100)
+            n_lineups = st.number_input(
+                "Number of Lineups",
+                min_value=1,
+                max_value=150,
+                value=20,
+                step=1,
+            )
+            stack_size = st.selectbox(
+                "Stack Size (hitters)", [4, 3, 5, 2, 1], index=0
+            )
+            min_unique = st.number_input(
+                "Min Unique Players/Lineup",
+                min_value=0,
+                max_value=9,
+                value=3,
+                step=1,
+            )
+            salary_floor = st.number_input(
+                "Salary Floor ($)",
+                min_value=40000,
+                max_value=50000,
+                value=49000,
+                step=100,
+            )
 
         with oc2:
             st.markdown("**Constraints**")
-            probable_only = st.checkbox("Use only probable SPs", value=True)
-            game_stack    = st.checkbox("Game Stack (SP + Opp Hitters)", value=False)
-            noise_level   = st.select_slider("Projection Noise", options=["None", "Low", "Medium", "High"], value="Low")
-            noise_map     = {"None": 0.0, "Low": 0.4, "Medium": 1.2, "High": 2.5}
-            noise_sigma   = noise_map[noise_level]
-            max_exp       = st.slider("Max Player Exposure %", min_value=10, max_value=100, value=100, step=5)
+            probable_only = st.checkbox(
+                "Use only probable SPs", value=True
+            )
+            game_stack = st.checkbox(
+                "Game Stack (SP + Opp Hitters)", value=False
+            )
+            noise_level = st.select_slider(
+                "Projection Noise",
+                options=["None", "Low", "Medium", "High"],
+                value="Low",
+            )
+            noise_map = {
+                "None": 0.0,
+                "Low": 0.4,
+                "Medium": 1.2,
+                "High": 2.5,
+            }
+            noise_sigma = noise_map[noise_level]
+            max_exp = st.slider(
+                "Max Player Exposure %",
+                min_value=10,
+                max_value=100,
+                value=100,
+                step=5,
+            )
 
         with oc3:
             st.markdown("**Active Constraints**")
-            locked   = list(st.session_state.locks)
+            locked = list(st.session_state.locks)
             excluded = list(st.session_state.excludes)
-            lock_names = df[df["id"].isin(locked)]["name"].tolist() if locked else []
-            excl_names = df[df["id"].isin(excluded)]["name"].tolist() if excluded else []
+            lock_names = (
+                df[df["id"].isin(locked)]["name"].tolist()
+                if locked
+                else []
+            )
+            excl_names = (
+                df[df["id"].isin(excluded)]["name"].tolist()
+                if excluded
+                else []
+            )
             if lock_names:
-                st.success(f"🔒 Locked ({len(lock_names)}): {', '.join(lock_names)}")
+                st.success(
+                    f"🔒 Locked ({len(lock_names)}): {', '.join(lock_names)}"
+                )
             else:
                 st.caption("🔒 No locked players")
             if excl_names:
-                st.error(f"🚫 Excluded ({len(excl_names)}): {', '.join(excl_names[:10])}{'…' if len(excl_names) > 10 else ''}")
+                st.error(
+                    f"🚫 Excluded ({len(excl_names)}): "
+                    f"{', '.join(excl_names[:10])}"
+                    f"{'…' if len(excl_names) > 10 else ''}"
+                )
             else:
                 st.caption("🚫 No excluded players")
-            active   = df[~df["excluded"]]
+            active = df[~df["excluded"]]
             pitchers = active[active["isP"]]
-            hitters  = active[~active["isP"]]
-            st.caption(f"Pool: {len(active)} active — {len(pitchers)} P / {len(hitters)} hitters")
+            hitters = active[~active["isP"]]
+            st.caption(
+                f"Pool: {len(active)} active — "
+                f"{len(pitchers)} P / {len(hitters)} hitters"
+            )
 
         st.divider()
-        gen_btn = st.button("⚡  Generate Lineups", type="primary", disabled=df.empty)
+        gen_btn = st.button(
+            "⚡  Generate Lineups", type="primary", disabled=df.empty
+        )
 
         if gen_btn:
             if st.session_state.games:
@@ -1393,7 +1446,9 @@ with tab_opt:
             if probable_only and st.session_state.get("probable_sp_ids"):
                 prob_ids = st.session_state.probable_sp_ids
                 mask_p = active["isP"]
-                active = active[~(mask_p & ~active["id"].isin(prob_ids))].copy()
+                active = active[
+                    ~(mask_p & ~active["id"].isin(prob_ids))
+                ].copy()
 
             if len(active) < 10:
                 st.error("Not enough active players (need at least 10).")
@@ -1401,23 +1456,27 @@ with tab_opt:
                 with st.spinner("Optimizing…"):
                     lineups = generate_lineups(
                         active,
-                        n_lineups    = n_lineups,
-                        stack_size   = stack_size,
-                        min_unique   = min_unique,
-                        salary_floor = salary_floor,
-                        locked_ids   = st.session_state.locks,
-                        excluded_ids = st.session_state.excludes,
-                        noise_sigma  = noise_sigma,
-                        game_stack   = game_stack,
+                        n_lineups=n_lineups,
+                        stack_size=stack_size,
+                        min_unique=min_unique,
+                        salary_floor=salary_floor,
+                        locked_ids=st.session_state.locks,
+                        excluded_ids=st.session_state.excludes,
+                        noise_sigma=noise_sigma,
+                        game_stack=game_stack,
                     )
 
                 if max_exp < 100 and lineups:
                     from collections import Counter
+
                     exp_count = Counter()
                     filtered = []
                     for lu in lineups:
                         ok = all(
-                            (exp_count[p["id"]] + 1) / (len(filtered) + 1) * 100 <= max_exp
+                            (exp_count[p["id"]] + 1)
+                            / (len(filtered) + 1)
+                            * 100
+                            <= max_exp
                             for p in lu["players"]
                         )
                         if ok:
@@ -1428,15 +1487,22 @@ with tab_opt:
 
                 st.session_state.lineups = lineups
                 if lineups:
-                    avg_sal  = sum(l["sal"]  for l in lineups) / len(lineups)
-                    avg_proj = sum(l["proj"] for l in lineups) / len(lineups)
+                    avg_sal = sum(l["sal"] for l in lineups) / len(lineups)
+                    avg_proj = sum(
+                        l["proj"] for l in lineups
+                    ) / len(lineups)
                     r1, r2, r3 = st.columns(3)
                     r1.metric("Lineups Generated", len(lineups))
-                    r2.metric("Avg Salary",  f"${avg_sal:,.0f}")
-                    r3.metric("Avg Proj",    f"{avg_proj:.1f}")
-                    st.success("Done! Go to the 📋 Lineups tab to view and export.")
+                    r2.metric("Avg Salary", f"${avg_sal:,.0f}")
+                    r3.metric("Avg Proj", f"{avg_proj:.1f}")
+                    st.success(
+                        "Done! Go to the 📋 Lineups tab to view and export."
+                    )
                 else:
-                    st.error("No valid lineups found. Try relaxing constraints.")
+                    st.error(
+                        "No valid lineups found. Try relaxing constraints."
+                    )
+
 # ─────────────────────────────────────────────────────────────────────────────
 # TAB 5 — LINEUPS
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1445,16 +1511,19 @@ with tab_lu:
     lineups = st.session_state.lineups
 
     if not lineups:
-        st.info("No lineups yet. Configure settings in the ⚙️ Optimizer tab and click Generate.")
+        st.info(
+            "No lineups yet. Configure settings in the ⚙️ Optimizer tab "
+            "and click Generate."
+        )
     else:
-        lc1, lc2, lc3, lc4 = st.columns([1,1,1,3])
+        lc1, lc2, lc3, lc4 = st.columns([1, 1, 1, 3])
         lc1.metric("Total Lineups", len(lineups))
-        avg_sal  = sum(l["sal"]  for l in lineups) / len(lineups)
+        avg_sal = sum(l["sal"] for l in lineups) / len(lineups)
         avg_proj = sum(l["proj"] for l in lineups) / len(lineups)
-        lc2.metric("Avg Salary",  f"${avg_sal:,.0f}")
-        lc3.metric("Avg Proj",    f"{avg_proj:.1f}")
+        lc2.metric("Avg Salary", f"${avg_sal:,.0f}")
+        lc3.metric("Avg Proj", f"{avg_proj:.1f}")
 
-        ORDER = ["P1","P2","C","1B","2B","3B","SS","OF1","OF2","OF3"]
+        ORDER = ["P1", "P2", "C", "1B", "2B", "3B", "SS", "OF1", "OF2", "OF3"]
 
         def build_readable_csv(lineups):
             rows = []
@@ -1462,13 +1531,15 @@ with tab_lu:
                 slot_map = {}
                 for p in lu["players"]:
                     slot_map[p["slot"]] = p
-                row = {"#": i+1}
+                row = {"#": i + 1}
                 for slot in ORDER:
                     p = slot_map.get(slot)
-                    row[slot] = f"{p['name']} ({p['team']})" if p else "–"
+                    row[slot] = (
+                        f"{p['name']} ({p['team']})" if p else "–"
+                    )
                 row["Salary"] = lu["sal"]
-                row["Proj"]   = round(lu["proj"], 1)
-                row["Stack"]  = lu["stack"]
+                row["Proj"] = round(lu["proj"], 1)
+                row["Stack"] = lu["stack"]
                 rows.append(row)
             return pd.DataFrame(rows)
 
@@ -1480,37 +1551,62 @@ with tab_lu:
                     slot_map[p["slot"]] = p
                 dk_row = {}
                 for i, slot in enumerate(ORDER):
-                    col = ["P","P","C","1B","2B","3B","SS","OF","OF","OF"][i]
+                    col = ["P", "P", "C", "1B", "2B", "3B", "SS", "OF", "OF", "OF"][
+                        i
+                    ]
                     p = slot_map.get(slot)
-                    dk_row[col if i < 2 else f"{col}_{i}"] = p["id"] if p else ""
+                    dk_row[col if i < 2 else f"{col}_{i}"] = (
+                        p["id"] if p else ""
+                    )
                 dk_rows.append(dk_row)
             return pd.DataFrame(dk_rows)
 
-        readable_csv = build_readable_csv(lineups).to_csv(index=False).encode()
-        dk_csv       = build_dk_csv(lineups).to_csv(index=False).encode()
+        readable_csv = build_readable_csv(lineups).to_csv(
+            index=False
+        ).encode()
+        dk_csv = build_dk_csv(lineups).to_csv(index=False).encode()
 
         ec1, ec2 = lc4.columns(2)
-        ec1.download_button("📥 Export Readable CSV", data=readable_csv,
-                             file_name="MLB_DFS_Lineups_Readable.csv", mime="text/csv")
-        ec2.download_button("🚀 Export DK Upload CSV", data=dk_csv,
-                             file_name="MLB_DFS_DKUpload.csv", mime="text/csv")
+        ec1.download_button(
+            "📥 Export Readable CSV",
+            data=readable_csv,
+            file_name="MLB_DFS_Lineups_Readable.csv",
+            mime="text/csv",
+        )
+        ec2.download_button(
+            "🚀 Export DK Upload CSV",
+            data=dk_csv,
+            file_name="MLB_DFS_DKUpload.csv",
+            mime="text/csv",
+        )
 
         display_rows = []
         for i, lu in enumerate(lineups):
             slot_map = {p["slot"]: p for p in lu["players"]}
-            row = {"#": i+1}
-            labels = ["SP1","SP2","C","1B","2B","3B","SS","OF1","OF2","OF3"]
+            row = {"#": i + 1}
+            labels = [
+                "SP1",
+                "SP2",
+                "C",
+                "1B",
+                "2B",
+                "3B",
+                "SS",
+                "OF1",
+                "OF2",
+                "OF3",
+            ]
             for j, slot in enumerate(ORDER):
                 p = slot_map.get(slot)
                 row[labels[j]] = f"{p['name']}" if p else "–"
             row["Salary"] = f"${lu['sal']:,}"
-            row["Proj"]   = round(lu["proj"],1)
-            row["Stack"]  = lu["stack"]
+            row["Proj"] = round(lu["proj"], 1)
+            row["Stack"] = lu["stack"]
             display_rows.append(row)
 
         st.dataframe(
             pd.DataFrame(display_rows),
             hide_index=True,
             use_container_width=True,
-            height=600
+            height=600,
         )
