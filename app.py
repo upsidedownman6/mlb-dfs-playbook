@@ -1289,18 +1289,35 @@ with tab_proj:
         if pj_team != "All":
             view = view[view["team"] == pj_team]
 
-        sort_col = {
+                sort_col_map = {
             "Final Proj": "finalProj",
             "Base": "base",
             "Salary": "sal",
             "Value": "__val2__",
-        }.get(pj_sort, "finalProj")
+        }
+        sort_col = sort_col_map.get(pj_sort, "finalProj")
 
-        if pj_sort == "Value":
+        # If projection columns are missing, fall back to salary or avg
+        if sort_col not in view.columns:
+            if "finalProj" in view.columns:
+                sort_col = "finalProj"
+            elif "base" in view.columns:
+                sort_col = "base"
+            elif "sal" in view.columns:
+                sort_col = "sal"
+            elif "avg" in view.columns:
+                sort_col = "avg"
+            else:
+                # No usable sort column; just skip sorting
+                sort_col = None
+
+        if pj_sort == "Value" and "finalProj" in view.columns and "sal" in view.columns:
             view["__val2__"] = view["finalProj"] / (view["sal"] / 1000).replace(
                 0, float("nan")
             )
-        view = view.sort_values(sort_col, ascending=False)
+
+        if sort_col is not None and sort_col in view.columns:
+            view = view.sort_values(sort_col, ascending=False)
 
         proj_rows = []
         for _, p in view.iterrows():
