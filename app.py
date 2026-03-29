@@ -1289,7 +1289,7 @@ with tab_proj:
         if pj_team != "All":
             view = view[view["team"] == pj_team]
 
-                sort_col_map = {
+        sort_col_map = {
             "Final Proj": "finalProj",
             "Base": "base",
             "Salary": "sal",
