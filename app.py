@@ -1135,37 +1135,24 @@ with tab_slate:
                     st.session_state.games[g_idx]["away_total"] = new_at
                     st.session_state.games[g_idx]["home_total"] = new_ht
 # ─────────────────────────────────────────────────────────────────────────────
-# TAB 2 — PLAYER POOL (simple view only, no ownership)
+# TAB 2 — PLAYER POOL (simple view only, using parse_dk_csv output)
 # ─────────────────────────────────────────────────────────────────────────────
 with tab_pool:
     st.header("Player Pool")
 
     if "players" not in st.session_state or st.session_state.players.empty:
-        st.info("Upload your DraftKings CSV first to see the player pool.")
+        st.info("Upload your DraftKings CSV in the CSV Parser section first.")
     else:
-        df = st.session_state.players.copy()
+        df = st.session_state.players.copy()  # already pos/name/team/sal/avg
 
-        # Map DK headers to internal names if not already done upstream
-        df = df.rename(
-            columns={
-                "Name": "name",
-                "TeamAbbrev": "team",
-                "Position": "pos",
-                "Salary": "sal",
-                "AvgPointsPerGame": "finalProj",
-            }
-        )
+        # Final projection may or may not exist yet; fall back to avg
+        if "finalProj" not in df.columns:
+            df["finalProj"] = df["avg"]
 
-        # Optional: simple leverage metric based only on projection
-        if "finalProj" in df.columns:
-            max_proj = df["finalProj"].max()
-
-            def calc_leverage(row):
-                if pd.isna(row["finalProj"]) or max_proj <= 0:
-                    return pd.NA
-                return row["finalProj"] / max_proj
-
-            df["leverage_score"] = df.apply(calc_leverage, axis=1)
+        # Simple leverage based on projection only
+        max_proj = df["finalProj"].max()
+        if max_proj and max_proj > 0:
+            df["leverage_score"] = df["finalProj"] / max_proj
         else:
             df["leverage_score"] = pd.NA
 
@@ -1176,18 +1163,19 @@ with tab_pool:
                 "team",
                 "pos",
                 "sal",
+                "avg",
                 "finalProj",
                 "leverage_score",
             ]
             if col in df.columns
         ]
 
-        # If you have leverage_color defined, you can style; otherwise just show dataframe
         try:
             styled = (
                 df[show_cols]
                 .style.format(
                     {
+                        "avg": "{:.1f}",
                         "finalProj": "{:.1f}",
                         "leverage_score": "{:.2f}",
                     }
@@ -1207,7 +1195,7 @@ with tab_proj:
 
     df = st.session_state.players
     if df.empty:
-        st.info("Upload a DK CSV on the Player Pool tab first.")
+        st.info("Upload a DK CSV in the CSV Parser section first.")
     else:
         if st.session_state.games:
             df = build_projections(df, st.session_state.games)
@@ -1607,6 +1595,9 @@ with tab_lu:
         st.dataframe(
             pd.DataFrame(display_rows),
             hide_index=True,
+            use_container_width=True,
+            height=600,
+        )
             use_container_width=True,
             height=600,
         )
