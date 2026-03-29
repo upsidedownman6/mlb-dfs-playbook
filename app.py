@@ -1140,66 +1140,57 @@ with tab_slate:
 with tab_pool:
     st.header("Player Pool")
 
-    if "players" not in st.session_state or st.session_state.players.empty:
-        st.info("Upload your DraftKings CSV and build the player pool first.")
+    # 1) Ownership upload is always visible
+    st.subheader("Projected Ownership (optional)")
+    own_file = st.file_uploader(
+        "Upload projected ownership CSV (RG, LineStar, etc.)",
+        type=["csv"],
+        key="own_upload",
+    )
+
+    if own_file is not None:
+        own_df = pd.read_csv(own_file)
+        own_df = own_df.rename(
+            columns={
+                "Name": "name",
+                "Player": "name",
+                "Team": "team",
+                "Tm": "team",
+                "Pos": "pos",
+                "Position": "pos",
+                "Own": "proj_own",
+                "ProjOwn": "proj_own",
+                "Projected Ownership": "proj_own",
+            }
+        )
+        own_df = own_df[["name", "team", "pos", "proj_own"]]
     else:
-        # In your app, st.session_state.players is the main pool
-        # If you also keep a separate 'player_pool', use that instead.
+        own_df = None
+
+    # 2) Only show the pool/table if players are loaded
+    if "players" not in st.session_state or st.session_state.players.empty:
+        st.info("Upload your DraftKings CSV first to see the player pool.")
+    else:
         player_pool = st.session_state.players.copy()
 
-        # 1) Ownership upload
-        st.subheader("Projected Ownership (optional)")
-
-        own_file = st.file_uploader(
-            "Upload projected ownership CSV (RG, LineStar, etc.)",
-            type=["csv"],
-            key="own_upload",
-        )
-
-        if own_file is not None:
-            own_df = pd.read_csv(own_file)
-            # Normalize common column names from different sites
-            own_df = own_df.rename(
-                columns={
-                    "Name": "name",
-                    "Player": "name",
-                    "Team": "team",
-                    "Tm": "team",
-                    "Pos": "pos",
-                    "Position": "pos",
-                    "Own": "proj_own",
-                    "ProjOwn": "proj_own",
-                    "Projected Ownership": "proj_own",
-                }
-            )
-            own_df = own_df[["name", "team", "pos", "proj_own"]]
-        else:
-            own_df = None
-
-        # 2) Attach ownership to your player pool
-        df = player_pool.copy()
-
-        # These match your existing columns in st.session_state.players
         name_col = "name"
         team_col = "team"
-        pos_col = "pos"
-        proj_col = "finalProj"   # this is the final projection from your model
+        pos_col  = "pos"
+        proj_col = "finalProj"
+
+        df = player_pool.copy()
 
         if own_df is not None:
             df = df.merge(
                 own_df,
-                left_on=[name_col, team_col, pos_col],
-                right_on=["name", "team", "pos"],
+                on=["name", "team", "pos"],
                 how="left",
             )
-            # After merge, we don't need the duplicate right-side key columns
-            # because they are the same names.
         else:
             df["proj_own"] = pd.NA
 
         df["proj_own"] = pd.to_numeric(df["proj_own"], errors="coerce")
 
-        # 3) Compute leverage
         if proj_col in df.columns:
             max_proj = df[proj_col].max()
 
@@ -1211,14 +1202,12 @@ with tab_pool:
                     or max_proj <= 0
                 ):
                     return pd.NA
-                # leverage ~ projection strength relative to ownership
                 return (row[proj_col] / max_proj) / (row["proj_own"] / 100.0)
 
             df["leverage_score"] = df.apply(calc_leverage, axis=1)
         else:
             df["leverage_score"] = pd.NA
 
-        # 4) Display styled table
         show_cols = [
             col
             for col in [
