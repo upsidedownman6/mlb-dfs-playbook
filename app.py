@@ -1010,9 +1010,7 @@ with tab_slate:
 # ─────────────────────────────────────────────────────────────────────────────
 # TAB 2 — PLAYER POOL
 # ─────────────────────────────────────────────────────────────────────────────
-
-tab2 = tabs[1]
-with tab2:
+with tab_player_pool:  # <- use whatever you called this tab in st.tabs(...)
     st.header("Player Pool")
 
     if "player_pool" not in st.session_state or st.session_state.player_pool is None:
@@ -1052,11 +1050,11 @@ with tab2:
         # 2) Attach ownership to your player pool
         df = player_pool.copy()
 
-        # Adjust these if your column names are different
+        # TODO: adjust these 4 names to match your columns
         name_col = "player_name"   # e.g. "Name"
         team_col = "team"          # e.g. "TeamAbbrev"
         pos_col = "position"       # e.g. "Position"
-        proj_col = "Proj_final"    # your final projection column
+        proj_col = "Proj_final"    # your projection column
 
         if own_df is not None:
             df = df.merge(
@@ -1129,7 +1127,6 @@ with tab2:
         )
 
         st.dataframe(styled, use_container_width=True)
-
 # ─────────────────────────────────────────────────────────────────────────────
 # TAB 3 — PROJECTIONS
 # ─────────────────────────────────────────────────────────────────────────────
