@@ -173,24 +173,6 @@ DK_TEAM_MAP = {
 
 def norm_team(t):
     return DK_TEAM_MAP.get(str(t).upper().strip(), str(t).upper().strip())
-    # ─────────────────────────────────────────────────────────────────────────────
-# CSV PARSER WIDGET (Streamlit side)
-# ─────────────────────────────────────────────────────────────────────────────
-st.subheader("CSV Parser")
-
-dk_file = st.file_uploader(
-    "Upload DraftKings DKSalaries.csv",
-    type=["csv"],
-    key="dk_upload",
-)
-
-if dk_file is not None:
-    parsed = parse_dk_csv(dk_file.getvalue())
-    if not parsed.empty:
-        st.session_state.players = parsed
-        st.success(f"Loaded {len(parsed)} players from DK CSV.")
-    else:
-        st.warning("CSV parsed but no valid players were found.")
 # ─────────────────────────────────────────────────────────────────────────────
 # SESSION STATE INIT
 # ─────────────────────────────────────────────────────────────────────────────
@@ -596,6 +578,25 @@ def parse_dk_csv(file_bytes):
     except Exception as e:
         st.error(f"CSV parse error: {e}")
         return pd.DataFrame()
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CSV PARSER WIDGET (Streamlit side)
+# ─────────────────────────────────────────────────────────────────────────────
+st.subheader("CSV Parser")
+
+dk_file = st.file_uploader(
+    "Upload DraftKings DKSalaries.csv",
+    type=["csv"],
+    key="dk_upload",
+)
+
+if dk_file is not None:
+    parsed = parse_dk_csv(dk_file.getvalue())
+    if not parsed.empty:
+        st.session_state.players = parsed
+        st.success(f"Loaded {len(parsed)} players from DK CSV.")
+    else:
+        st.warning("CSV parsed but no valid players were found.")
 # ─────────────────────────────────────────────────────────────────────────────
 # LP OPTIMIZER
 # ─────────────────────────────────────────────────────────────────────────────
