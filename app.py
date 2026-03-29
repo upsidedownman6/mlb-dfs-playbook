@@ -1348,18 +1348,18 @@ with tab_opt:
         with oc1:
             st.markdown("**Lineup Generation**")
             n_lineups    = st.number_input("Number of Lineups", min_value=1, max_value=150, value=20, step=1)
-            stack_size   = st.selectbox("Stack Size (hitters)", [4,3,5,2,1], index=0)
+            stack_size   = st.selectbox("Stack Size (hitters)", [4, 3, 5, 2, 1], index=0)
             min_unique   = st.number_input("Min Unique Players/Lineup", min_value=0, max_value=9, value=3, step=1)
             salary_floor = st.number_input("Salary Floor ($)", min_value=40000, max_value=50000, value=49000, step=100)
 
         with oc2:
             st.markdown("**Constraints**")
             probable_only = st.checkbox("Use only probable SPs", value=True)
-            game_stack   = st.checkbox("Game Stack (SP + Opp Hitters)", value=False)
-            noise_level  = st.select_slider("Projection Noise", options=["None","Low","Medium","High"], value="Low")
-            noise_map    = {"None":0.0, "Low":0.4, "Medium":1.2, "High":2.5}
-            noise_sigma  = noise_map[noise_level]
-            max_exp      = st.slider("Max Player Exposure %", min_value=10, max_value=100, value=100, step=5)
+            game_stack    = st.checkbox("Game Stack (SP + Opp Hitters)", value=False)
+            noise_level   = st.select_slider("Projection Noise", options=["None", "Low", "Medium", "High"], value="Low")
+            noise_map     = {"None": 0.0, "Low": 0.4, "Medium": 1.2, "High": 2.5}
+            noise_sigma   = noise_map[noise_level]
+            max_exp       = st.slider("Max Player Exposure %", min_value=10, max_value=100, value=100, step=5)
 
         with oc3:
             st.markdown("**Active Constraints**")
@@ -1372,7 +1372,7 @@ with tab_opt:
             else:
                 st.caption("🔒 No locked players")
             if excl_names:
-                st.error(f"🚫 Excluded ({len(excl_names)}): {', '.join(excl_names[:10])}{'…' if len(excl_names)>10 else ''}")
+                st.error(f"🚫 Excluded ({len(excl_names)}): {', '.join(excl_names[:10])}{'…' if len(excl_names) > 10 else ''}")
             else:
                 st.caption("🚫 No excluded players")
             active   = df[~df["excluded"]]
@@ -1383,7 +1383,7 @@ with tab_opt:
         st.divider()
         gen_btn = st.button("⚡  Generate Lineups", type="primary", disabled=df.empty)
 
-               if gen_btn:
+        if gen_btn:
             if st.session_state.games:
                 df = build_projections(df, st.session_state.games)
                 st.session_state.players = df
@@ -1410,19 +1410,7 @@ with tab_opt:
                         noise_sigma  = noise_sigma,
                         game_stack   = game_stack,
                     )
-        else:
-            with st.spinner("Optimizing…"):
-                lineups = generate_lineups(
-                    active,
-                    n_lineups    = n_lineups,
-                    stack_size   = stack_size,
-                    min_unique   = min_unique,
-                    salary_floor = salary_floor,
-                    locked_ids   = st.session_state.locks,
-                    excluded_ids = st.session_state.excludes,
-                    noise_sigma  = noise_sigma,
-                    game_stack   = game_stack,
-                )
+
                 if max_exp < 100 and lineups:
                     from collections import Counter
                     exp_count = Counter()
@@ -1449,7 +1437,6 @@ with tab_opt:
                     st.success("Done! Go to the 📋 Lineups tab to view and export.")
                 else:
                     st.error("No valid lineups found. Try relaxing constraints.")
-
 # ─────────────────────────────────────────────────────────────────────────────
 # TAB 5 — LINEUPS
 # ─────────────────────────────────────────────────────────────────────────────
