@@ -1010,7 +1010,7 @@ with tab_slate:
 # ─────────────────────────────────────────────────────────────────────────────
 # TAB 2 — PLAYER POOL
 # ─────────────────────────────────────────────────────────────────────────────
-with tab_player_pool:
+with tab_pool:
     st.header("Player Pool")
 
     if "players" not in st.session_state or st.session_state.players.empty:
