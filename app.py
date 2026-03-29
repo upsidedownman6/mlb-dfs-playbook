@@ -1151,6 +1151,7 @@ with tab_pool:
     own_df = None
     if own_file is not None:
         raw = pd.read_csv(own_file)
+        st.write("Ownership CSV columns:", list(raw.columns))
 
         # Normalize column names for matching
         col_map = {c: c.lower().strip() for c in raw.columns}
