@@ -1504,15 +1504,32 @@ with tab_opt:
                 df = build_projections(df, st.session_state.games)
                 st.session_state.players = df
 
-            active = df[~df["excluded"]].copy()
+                       active = df[~df["excluded"]].copy()
 
-            if probable_only and st.session_state.get("probable_sp_ids"):
-                prob_ids = st.session_state.probable_sp_ids
-                mask_p = active["isP"]
-                active = active[
-                    ~(mask_p & ~active["id"].isin(prob_ids))
-                ].copy()
+            if probable_only and st.session_state.get("games"):
+                # Build a set of (team, pitcher_name) for today’s probable SPs
+                probable_pairs = set()
+                for g in st.session_state.games:
+                    for side in ["away", "home"]:
+                        p_name = g.get(f"{side}_probable_sp")
+                        team   = g.get(side)
+                        if p_name and team:
+                            probable_pairs.add((norm_team(team), p_name.strip()))
 
+                if probable_pairs:
+                    mask_p = active["isP"]
+                    # Keep only pitchers whose (team, name) is in probable_pairs
+                    keep_p = active[mask_p].apply(
+                        lambda r: (r["team"], r["name"].strip()) in probable_pairs,
+                        axis=1,
+                    )
+                    active = pd.concat(
+                        [
+                            active[~mask_p],
+                            active[mask_p][keep_p],
+                        ],
+                        axis=0,
+                    )
             if len(active) < 10:
                 st.error("Not enough active players (need at least 10).")
             else:
